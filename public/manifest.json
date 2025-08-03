@@ -1,6 +1,6 @@
 {
-  "name": "배드민턴 매니저",
-  "short_name": "배드민턴",
+  "name": "내맘대로 배드민턴",
+  "short_name": "내맘대로",
   "description": "배드민턴 클럽 관리 시스템",
   "start_url": "/",
   "display": "standalone",
