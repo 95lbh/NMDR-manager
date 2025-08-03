@@ -26,7 +26,7 @@ export default function PWAInstaller() {
     // PWA 설치 상태 확인
     const checkInstallStatus = () => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-      const isInWebAppiOS = (window.navigator as any).standalone === true;
+      const isInWebAppiOS = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
       const isInWebAppChrome = window.matchMedia('(display-mode: standalone)').matches;
 
       if (isStandalone || isInWebAppiOS || isInWebAppChrome) {

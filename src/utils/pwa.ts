@@ -8,7 +8,7 @@ export const isPWAInstalled = (): boolean => {
   
   // 스탠드얼론 모드에서 실행 중인지 확인
   return window.matchMedia('(display-mode: standalone)').matches ||
-         (window.navigator as any).standalone === true ||
+         (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
          document.referrer.includes('android-app://');
 };
 
