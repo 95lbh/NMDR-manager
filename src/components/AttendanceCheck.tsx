@@ -130,7 +130,7 @@ export default function AttendanceCheck() {
           <div className="flex items-center">
             <UserGroupIcon className="h-8 w-8 text-green-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">총 출석자</p>
+              <p className="text-sm font-medium text-gray-600">오늘 출석자</p>
               <p className="text-2xl font-bold text-gray-900">{attendance.length}</p>
             </div>
           </div>
@@ -142,7 +142,7 @@ export default function AttendanceCheck() {
               <span className="text-white font-bold">🏸</span>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">셔틀콕 제출</p>
+              <p className="text-sm font-medium text-gray-600">셔틀콕 개수</p>
               <p className="text-2xl font-bold text-gray-900">
                 {attendance.reduce((sum, a) => sum + a.shuttlecockCount, 0)}
               </p>

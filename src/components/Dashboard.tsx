@@ -1060,39 +1060,39 @@ export default function Dashboard() {
                     return {
                       courtName: 'text-4xl',
                       timer: 'text-xl',
-                      playerName: 'text-3xl font-black', // 가독성 최대화: 2xl → 3xl, font-black 추가
+                      playerName: 'text-3xl font-black', // 텍스트 크기 최대화: 5xl → 8xl
                       waitingTitle: 'text-2xl',
-                      waitingPlayer: 'text-2xl font-bold', // xl → 2xl, font-bold 추가
+                      waitingPlayer: 'text-4xl font-bold', // 3xl → 4xl
                       emptyTitle: 'text-3xl',
                       emptySubtitle: 'text-xl',
                       padding: 'p-8',
-                      playerPadding: 'px-8 py-10', // 패딩 증가로 더 큰 영역 확보
+                      playerPadding: 'px-1 py-4', // 패딩 최소화
                       gap: 'gap-8'
                     };
                   } else if (totalCells <= 9) {
                     return {
                       courtName: 'text-3xl',
                       timer: 'text-lg',
-                      playerName: 'text-2xl font-black', // 가독성 개선: xl → 2xl, font-black 추가
+                      playerName: 'text-4xl font-black', // 텍스트 크기 최대화: 7xl → 8xl
                       waitingTitle: 'text-xl',
-                      waitingPlayer: 'text-xl font-bold', // lg → xl, font-bold 추가
+                      waitingPlayer: 'text-3xl font-bold', // 2xl → 3xl
                       emptyTitle: 'text-2xl',
                       emptySubtitle: 'text-lg',
-                      padding: 'p-6',
-                      playerPadding: 'px-6 py-8', // 패딩 증가
-                      gap: 'gap-6'
+                      padding: 'p-2',
+                      playerPadding: 'px-2 py-4', // 패딩 최소화
+                      gap: 'gap-5'
                     };
                   } else {
                     return {
                       courtName: 'text-2xl',
                       timer: 'text-base',
-                      playerName: 'text-xl font-bold', // 가독성 개선: lg → xl, font-bold 추가
+                      playerName: 'text-5xl font-bold', // 텍스트 크기 증가: 3xl → 5xl
                       waitingTitle: 'text-lg',
-                      waitingPlayer: 'text-lg font-bold', // base → lg, font-bold 추가
+                      waitingPlayer: 'text-2xl font-bold', // xl → 2xl
                       emptyTitle: 'text-xl',
                       emptySubtitle: 'text-base',
                       padding: 'p-4',
-                      playerPadding: 'px-4 py-6', // 패딩 증가
+                      playerPadding: 'px-1 py-2', // 패딩 최소화
                       gap: 'gap-4'
                     };
                   }

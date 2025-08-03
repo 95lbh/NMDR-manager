@@ -221,6 +221,23 @@ export const attendanceService = {
     await Promise.all(deletePromises);
   },
 
+  // 전체 출석 데이터 조회
+  async getAllAttendance(): Promise<Attendance[]> {
+    const querySnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.ATTENDANCE),
+        orderBy('date', 'desc')
+      )
+    );
+
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      date: convertTimestamp(doc.data().date),
+      createdAt: convertTimestamp(doc.data().createdAt)
+    })) as Attendance[];
+  },
+
   // 주간 출석 통계
   async getWeeklyAttendanceStats(): Promise<{ date: string; count: number; day: string }[]> {
     const today = new Date();

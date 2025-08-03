@@ -17,7 +17,7 @@ export default function Stats() {
   const { state } = useApp();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
 
-  const { members, attendance, weeklyStats, loading } = state;
+  const { members, attendance, allAttendance, weeklyStats, loading } = state;
 
   // 오늘 날짜 필터링 함수
   const isToday = (date: Date) => {
@@ -107,7 +107,7 @@ export default function Stats() {
           <div className="flex items-center">
             <TrophyIcon className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
             <div className="ml-3 sm:ml-4">
-              <p className="text-xs sm:text-sm font-medium text-gray-600">총 게임</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-600">지금까지 몇 게임 함?</p>
               <p className="text-lg sm:text-2xl font-bold text-gray-900">
                 {loading.members ? '...' : totalGames}
               </p>
@@ -119,9 +119,9 @@ export default function Stats() {
           <div className="flex items-center">
             <ChartBarIcon className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
             <div className="ml-3 sm:ml-4">
-              <p className="text-xs sm:text-sm font-medium text-gray-600">총 셔틀콕</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-600">지금까지 셔틀콕 몇 개 씀?</p>
               <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                {loading.attendance ? '...' : attendance.reduce((sum: number, a: any) => sum + a.shuttlecockCount, 0)} {/* eslint-disable-line @typescript-eslint/no-explicit-any */}
+                {loading.allAttendance ? '...' : allAttendance.reduce((sum: number, a: any) => sum + a.shuttlecockCount, 0)} {/* eslint-disable-line @typescript-eslint/no-explicit-any */}
               </p>
             </div>
           </div>
@@ -161,7 +161,7 @@ export default function Stats() {
 
       {/* 상위 플레이어 */}
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">활발한 플레이어</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">명예 회원👍</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>
@@ -235,7 +235,7 @@ export default function Stats() {
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 space-y-2 sm:space-y-0">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900">주간 출석 현황</h2>
-          <select
+          {/* <select
             value={selectedPeriod}
             onChange={(e) => setSelectedPeriod(e.target.value)}
             className="w-full sm:w-auto px-3 py-1 border border-gray-300 rounded text-sm"
@@ -243,7 +243,7 @@ export default function Stats() {
             <option value="week">이번 주</option>
             <option value="month">이번 달</option>
             <option value="year">올해</option>
-          </select>
+          </select> */}
         </div>
           {loading.weeklyStats ? (
             <div className="text-center py-8">

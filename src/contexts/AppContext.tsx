@@ -20,7 +20,8 @@ interface CourtSettings {
 // 상태 타입 정의
 interface AppState {
   members: Member[];
-  attendance: Attendance[];
+  attendance: Attendance[]; // 오늘의 출석 데이터
+  allAttendance: Attendance[]; // 전체 출석 데이터
   games: Game[];
   courts: Court[];
   weeklyStats: { date: string; count: number; day: string }[];
@@ -28,6 +29,7 @@ interface AppState {
   loading: {
     members: boolean;
     attendance: boolean;
+    allAttendance: boolean;
     games: boolean;
     courts: boolean;
     weeklyStats: boolean;
@@ -44,6 +46,7 @@ type AppAction =
   | { type: 'UPDATE_MEMBER'; payload: Member }
   | { type: 'DELETE_MEMBER'; payload: string }
   | { type: 'SET_ATTENDANCE'; payload: Attendance[] }
+  | { type: 'SET_ALL_ATTENDANCE'; payload: Attendance[] }
   | { type: 'ADD_ATTENDANCE'; payload: Attendance }
   | { type: 'UPDATE_ATTENDANCE'; payload: Attendance }
   | { type: 'DELETE_ATTENDANCE'; payload: string }
@@ -77,6 +80,7 @@ const initializeCourtGrid = (): CourtPosition[][] => {
 const initialState: AppState = {
   members: [],
   attendance: [],
+  allAttendance: [],
   games: [],
   courts: [],
   weeklyStats: [],
@@ -86,6 +90,7 @@ const initialState: AppState = {
   loading: {
     members: false,
     attendance: false,
+    allAttendance: false,
     games: false,
     courts: false,
     weeklyStats: false,
@@ -119,6 +124,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     case 'SET_ATTENDANCE':
       return { ...state, attendance: action.payload };
+    case 'SET_ALL_ATTENDANCE':
+      return { ...state, allAttendance: action.payload };
     case 'ADD_ATTENDANCE':
       return { ...state, attendance: [...state.attendance, action.payload] };
     case 'UPDATE_ATTENDANCE':
@@ -187,6 +194,7 @@ const AppContext = createContext<{
     updateMember: (id: string, memberData: Partial<Member>) => Promise<void>;
     deleteMember: (id: string) => Promise<void>;
     loadAttendance: () => Promise<void>;
+    loadAllAttendance: () => Promise<void>;
     addAttendance: (memberId: string, memberName: string, shuttlecockCount: number, guestInfo?: { gender: string; skillLevel: string; birthYear: number }) => Promise<void>;
     updateAttendance: (id: string, updates: Partial<Attendance>) => Promise<void>;
     deleteAttendance: (id: string) => Promise<void>;
@@ -212,6 +220,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // 순차적으로 로드하여 무한 루프 방지
         await loadMembers();
         await loadAttendance();
+        await loadAllAttendance(); // 전체 출석 데이터 로드 추가
         // 코트 설정을 먼저 로드하여 코트 배치 설정
         await loadCourtSettings();
         await loadWeeklyStats();
@@ -307,6 +316,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_ERROR', payload: '출석 데이터를 불러오는데 실패했습니다.' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: { key: 'attendance', value: false } });
+    }
+  };
+
+  const loadAllAttendance = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: { key: 'allAttendance', value: true } });
+      const allAttendance = await attendanceService.getAllAttendance();
+      dispatch({ type: 'SET_ALL_ATTENDANCE', payload: allAttendance });
+    } catch (error) {
+      console.error('전체 출석 데이터 로드 실패:', error);
+      dispatch({ type: 'SET_ERROR', payload: '전체 출석 데이터를 불러오는데 실패했습니다.' });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: { key: 'allAttendance', value: false } });
     }
   };
 
@@ -572,6 +594,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateMember,
     deleteMember,
     loadAttendance,
+    loadAllAttendance,
     addAttendance,
     updateAttendance,
     deleteAttendance,
