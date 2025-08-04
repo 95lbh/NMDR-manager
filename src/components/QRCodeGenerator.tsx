@@ -11,9 +11,14 @@ interface QRCodeGeneratorProps {
 
 export default function QRCodeGenerator({ url, title }: QRCodeGeneratorProps) {
   const [copied, setCopied] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [currentQRUrl, setCurrentQRUrl] = useState(0);
 
-  // QR 코드 생성 URL (Google Charts API 사용)
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+  // QR 코드 생성 URL (여러 서비스 대체 가능)
+  const qrCodeUrls = [
+    `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`,
+    `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(url)}`
+  ];
 
   const copyToClipboard = async () => {
     try {
@@ -37,30 +42,43 @@ export default function QRCodeGenerator({ url, title }: QRCodeGeneratorProps) {
 
       {/* QR 코드 */}
       <div className="bg-gray-50 rounded-xl p-4 mb-4">
-        <div className="bg-white rounded-lg p-4 inline-block mx-auto">
-          <Image
-            src={qrCodeUrl}
-            alt="QR Code"
-            width={192}
-            height={192}
-            className="w-48 h-48 mx-auto"
-            onError={(e) => {
-              // QR 코드 로드 실패 시 대체 텍스트
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                parent.innerHTML = `
-                  <div class="w-48 h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <div class="text-center">
-                      <div class="text-4xl mb-2">📱</div>
-                      <div class="text-sm text-gray-600">QR 코드</div>
-                    </div>
-                  </div>
-                `;
-              }
-            }}
-          />
+        <div className="bg-white rounded-lg p-4 flex justify-center">
+          {!imageError ? (
+            <Image
+              src={qrCodeUrls[currentQRUrl]}
+              alt="QR Code"
+              width={192}
+              height={192}
+              className="w-48 h-48"
+              onError={() => {
+                if (currentQRUrl < qrCodeUrls.length - 1) {
+                  setCurrentQRUrl(currentQRUrl + 1);
+                } else {
+                  setImageError(true);
+                }
+              }}
+              unoptimized={true}
+            />
+          ) : (
+            <div className="w-48 h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-4xl mb-2">📱</div>
+                <div className="text-sm text-gray-600 mb-2">QR 코드</div>
+                <div className="text-xs text-gray-500">
+                  이미지 로드 실패
+                </div>
+                <button
+                  onClick={() => {
+                    setImageError(false);
+                    setCurrentQRUrl(0);
+                  }}
+                  className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  다시 시도
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

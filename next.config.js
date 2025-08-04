@@ -29,7 +29,7 @@ const nextConfig = {
   
   // 이미지 최적화 설정
   images: {
-    domains: [],
+    domains: ['api.qrserver.com', 'chart.googleapis.com'],
     formats: ['image/webp', 'image/avif'],
   },
 

@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navigation from "@/components/Navigation";
 import { AppProvider } from "@/contexts/AppContext";
-import PWAInstaller from "@/components/PWAInstaller";
-import OfflineIndicator from "@/components/OfflineIndicator";
-import PWADebugger from "@/components/PWADebugger";
-import OrientationGuide from "@/components/OrientationGuide";
+import ConditionalLayout from "@/components/ConditionalLayout";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -60,16 +56,9 @@ export default function RootLayout({
     <html lang="ko">
       <body className={`${inter.className} antialiased bg-gray-50`} suppressHydrationWarning={true}>
         <AppProvider>
-          <div className="min-h-screen">
-            <OrientationGuide />
-            <OfflineIndicator />
-            <Navigation />
-            <main className="container mx-auto px-4 py-6">
-              {children}
-            </main>
-            <PWAInstaller />
-            <PWADebugger />
-          </div>
+          <ConditionalLayout>
+            {children}
+          </ConditionalLayout>
         </AppProvider>
       </body>
     </html>

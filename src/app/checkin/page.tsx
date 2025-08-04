@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useApp } from '@/contexts/AppContext';
-import { CheckIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { CheckIcon } from '@heroicons/react/24/outline';
 
 export default function CheckInPage() {
   const { state, actions } = useApp();
@@ -142,15 +141,18 @@ export default function CheckInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 p-4">
       <div className="max-w-2xl mx-auto">
         {/* 헤더 */}
         <div className="text-center mb-8 pt-8">
-          <div className="bg-white bg-opacity-20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-            <UserGroupIcon className="h-8 w-8 text-black" />
+          <div className="bg-white bg-opacity-20 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+            <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">셀프 출석체크</h1>
-          <p className="text-white text-opacity-90 text-lg">이름을 선택하고 제출할 셔틀콕 개수를 입력하세요</p>
+          <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">내맘대로 배드민턴</h1>
+          <p className="text-left text-white text-opacity-80 text-l">1. 처음 오신 분은 "+ 회원 추가" 후 출석체크하세요 </p>
+          <p className="text-left text-white text-opacity-80 text-l">2. 이름과 셔틀콕 개수를 선택 후 "출석체크 완료" 클릭!</p>
         </div>
 
         {/* 출석 현황 */}
@@ -290,16 +292,6 @@ export default function CheckInPage() {
             )}
           </div>
         </div>
-
-        {/* 하단 링크 */}
-        <div className="text-center mt-6">
-          <Link
-            href="/"
-            className="text-white text-opacity-80 hover:text-opacity-100 underline"
-          >
-            ← 메인 페이지로 돌아가기
-          </Link>
-        </div>
       </div>
 
       {/* 회원가입 모달 */}
@@ -322,7 +314,6 @@ export default function CheckInPage() {
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); handleSignup(); }} className="p-6 space-y-4">
-
               <div className="space-y-4">
                 {/* 이름 입력 */}
                 <div>

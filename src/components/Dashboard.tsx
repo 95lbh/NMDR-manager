@@ -802,7 +802,7 @@ export default function Dashboard() {
         {/* 관리자용 출석체크 */}
         <button
           onClick={() => setIsAttendanceExpanded(true)}
-          className="group lg:flex-[2] w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
+          className="group lg:flex-[3] w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
         >
           {/* 배경 애니메이션 효과 */}
           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -828,32 +828,7 @@ export default function Dashboard() {
 
         </button>
 
-        {/* 셀프 출석체크 링크 */}
-        <a
-          href="/checkin"
-          className="group lg:flex-1 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
-        >
-          {/* 배경 애니메이션 효과 */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-          <div className="relative flex items-center space-x-4">
-            <div className="relative">
-              <div className="bg-indigo-800 bg-opacity-40 rounded-full p-3 shadow-lg backdrop-blur-sm group-hover:bg-opacity-50 transition-all duration-300">
-                <svg className="h-8 w-8 text-white drop-shadow-sm group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div className="absolute -top-1 -right-1 bg-blue-400 rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
-                <span className="text-xs font-bold text-blue-900">📱</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-start flex-1">
-              <span className="text-3xl font-bold text-white drop-shadow-sm group-hover:text-blue-100 transition-colors duration-300">셀프 출첵!</span>
-            </div>
-          </div>
-        </a>
 
         {/* QR 코드 생성 버튼 */}
         <button
@@ -878,8 +853,8 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col items-start flex-1">
-              <span className="text-3xl font-bold text-white drop-shadow-sm group-hover:text-yellow-100 transition-colors duration-300">QR 코드</span>
-              <span className="text-sm text-white text-opacity-90 font-medium group-hover:text-opacity-100 transition-all duration-300">출첵 링크 공유</span>
+              <span className="text-3xl font-bold text-white drop-shadow-sm group-hover:text-yellow-100 transition-colors duration-300">셀프 출석체크</span>
+              <span className="text-sm text-white text-opacity-90 font-medium group-hover:text-opacity-100 transition-all duration-300">QR 코드 및 링크 생성</span>
             </div>
           </div>
         </button>
@@ -1471,7 +1446,7 @@ export default function Dashboard() {
               </svg>
             </button>
             <QRCodeGenerator
-              url={`${typeof window !== 'undefined' ? window.location.origin : ''}/checkin`}
+              url={`${typeof window !== 'undefined' ? window.location.origin : 'https://nmdr.vercel.app'}/checkin`}
               title="셀프 출석체크"
             />
           </div>
