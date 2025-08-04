@@ -660,7 +660,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col space-y-6 fade-in ${isFullscreen ? 'fullscreen-optimized' : ''}`}>
+    <div className={`min-h-screen flex flex-col space-y-6 fade-in landscape-optimized ${isFullscreen ? 'fullscreen-optimized' : ''}`}>
       {/* 헤더 */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
         <div>
@@ -798,7 +798,7 @@ export default function Dashboard() {
       </div>
 
       {/* 출석체크 버튼들 */}
-      <div className="mb-6 flex flex-col lg:flex-row gap-4">
+      <div className="mb-6 flex flex-col lg:flex-row gap-4 landscape-buttons">
         {/* 관리자용 출석체크 */}
         <button
           onClick={() => setIsAttendanceExpanded(true)}

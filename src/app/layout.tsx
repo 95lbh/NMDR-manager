@@ -6,6 +6,7 @@ import { AppProvider } from "@/contexts/AppContext";
 import PWAInstaller from "@/components/PWAInstaller";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import PWADebugger from "@/components/PWADebugger";
+import OrientationGuide from "@/components/OrientationGuide";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "배드민턴 매니저",
+    title: "N.M.D.R 배드민턴",
   },
   formatDetection: {
     telephone: false,
@@ -44,6 +45,10 @@ export const metadata: Metadata = {
 
 export const viewport = {
   themeColor: "#10b981",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -56,6 +61,7 @@ export default function RootLayout({
       <body className={`${inter.className} antialiased bg-gray-50`} suppressHydrationWarning={true}>
         <AppProvider>
           <div className="min-h-screen">
+            <OrientationGuide />
             <OfflineIndicator />
             <Navigation />
             <main className="container mx-auto px-4 py-6">

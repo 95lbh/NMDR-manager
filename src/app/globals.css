@@ -5,6 +5,55 @@
   grid-template-columns: repeat(14, minmax(0, 1fr));
 }
 
+/* PWA 가로모드 최적화 */
+@media screen and (orientation: portrait) and (max-width: 768px) {
+  body::before {
+    content: "📱 더 나은 경험을 위해 기기를 가로로 회전해주세요";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 9999;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      transform: translateY(-100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  /* 세로모드에서 컨텐츠 상단 여백 추가 */
+  .container {
+    padding-top: 40px;
+  }
+}
+
+/* 가로모드 최적화 스타일 */
+@media screen and (orientation: landscape) {
+  /* 가로모드에서 더 넓은 레이아웃 활용 */
+  .landscape-optimized {
+    max-width: 100vw;
+    padding: 0 2rem;
+  }
+
+  /* 버튼들을 가로로 더 잘 배치 */
+  .landscape-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+}
+
 /* 커스텀 스타일 */
 html {
   scroll-behavior: smooth;
