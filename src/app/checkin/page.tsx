@@ -171,7 +171,7 @@ export default function CheckInPage() {
               <div className="text-sm opacity-90">미출석</div>
             </div>
             <div className="text-center w-1/3">
-              <div className="text-2xl font-bold">{new Date().toLocaleDateString('ko-KR')}</div>
+              <div className="text-1xl font-bold">{new Date().toLocaleDateString('ko-KR')}</div>
               <div className="text-sm opacity-90">오늘</div>
             </div>
           </div>
