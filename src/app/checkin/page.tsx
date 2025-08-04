@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/contexts/AppContext';
 import { CheckIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
@@ -292,12 +293,12 @@ export default function CheckInPage() {
 
         {/* 하단 링크 */}
         <div className="text-center mt-6">
-          <a
+          <Link
             href="/"
             className="text-white text-opacity-80 hover:text-opacity-100 underline"
           >
             ← 메인 페이지로 돌아가기
-          </a>
+          </Link>
         </div>
       </div>
 

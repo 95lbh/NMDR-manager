@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { QrCodeIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 interface QRCodeGeneratorProps {
@@ -37,9 +38,11 @@ export default function QRCodeGenerator({ url, title }: QRCodeGeneratorProps) {
       {/* QR 코드 */}
       <div className="bg-gray-50 rounded-xl p-4 mb-4">
         <div className="bg-white rounded-lg p-4 inline-block mx-auto">
-          <img 
-            src={qrCodeUrl} 
-            alt="QR Code" 
+          <Image
+            src={qrCodeUrl}
+            alt="QR Code"
+            width={192}
+            height={192}
             className="w-48 h-48 mx-auto"
             onError={(e) => {
               // QR 코드 로드 실패 시 대체 텍스트
