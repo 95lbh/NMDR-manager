@@ -6,6 +6,7 @@ import { Court } from '@/types';
 import GameModal from './GameModal';
 import { useApp } from '@/contexts/AppContext';
 import ClientOnly from './ClientOnly';
+import QRCodeGenerator from './QRCodeGenerator';
 
 type DetailViewType = 'attendance' | 'playing' | 'waiting' | 'todayStats';
 type SortType = 'name' | 'gender' | 'skillLevel' | 'gamesPlayed' | 'winRate' | 'gameStatus';
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false);
   const [selectedMemberForAttendance, setSelectedMemberForAttendance] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [isShuttlecockModalOpen, setIsShuttlecockModalOpen] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
 
   const { members, attendance, courts } = state;
 
@@ -795,11 +797,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 출석체크 버튼 */}
-      <div className="mb-6">
+      {/* 출석체크 버튼들 */}
+      <div className="mb-6 flex flex-col lg:flex-row gap-4">
+        {/* 관리자용 출석체크 */}
         <button
           onClick={() => setIsAttendanceExpanded(true)}
-          className="group w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
+          className="group lg:flex-[2] w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
         >
           {/* 배경 애니메이션 효과 */}
           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -807,7 +810,7 @@ export default function Dashboard() {
 
           <div className="relative flex items-center space-x-4">
             <div className="relative">
-              <div className="bg-yellow-300 bg-opacity-30 rounded-full p-3 shadow-lg backdrop-blur-sm group-hover:bg-opacity-40 transition-all duration-300">
+              <div className="bg-emerald-800 bg-opacity-40 rounded-full p-3 shadow-lg backdrop-blur-sm group-hover:bg-opacity-50 transition-all duration-300">
                 <svg className="h-8 w-8 text-white drop-shadow-sm group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -823,6 +826,62 @@ export default function Dashboard() {
             </div>
           </div>
 
+        </button>
+
+        {/* 셀프 출석체크 링크 */}
+        <a
+          href="/checkin"
+          className="group lg:flex-1 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
+        >
+          {/* 배경 애니메이션 효과 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+          <div className="relative flex items-center space-x-4">
+            <div className="relative">
+              <div className="bg-indigo-800 bg-opacity-40 rounded-full p-3 shadow-lg backdrop-blur-sm group-hover:bg-opacity-50 transition-all duration-300">
+                <svg className="h-8 w-8 text-white drop-shadow-sm group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="absolute -top-1 -right-1 bg-blue-400 rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                <span className="text-xs font-bold text-blue-900">📱</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-start flex-1">
+              <span className="text-3xl font-bold text-white drop-shadow-sm group-hover:text-blue-100 transition-colors duration-300">셀프 출첵!</span>
+            </div>
+          </div>
+        </a>
+
+        {/* QR 코드 생성 버튼 */}
+        <button
+          onClick={() => setShowQRCode(true)}
+          className="group lg:flex-1 w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 hover:from-orange-600 hover:via-red-600 hover:to-pink-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
+        >
+          {/* 배경 애니메이션 효과 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+          <div className="relative flex items-center space-x-4">
+            <div className="relative">
+              <div className="bg-red-800 bg-opacity-40 rounded-full p-3 shadow-lg backdrop-blur-sm group-hover:bg-opacity-50 transition-all duration-300">
+                <svg className="h-8 w-8 text-white drop-shadow-sm group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+                </svg>
+              </div>
+              <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                <span className="text-xs font-bold text-yellow-900">QR</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-start flex-1">
+              <span className="text-3xl font-bold text-white drop-shadow-sm group-hover:text-yellow-100 transition-colors duration-300">QR 코드</span>
+              <span className="text-sm text-white text-opacity-90 font-medium group-hover:text-opacity-100 transition-all duration-300">출첵 링크 공유</span>
+            </div>
+          </div>
         </button>
       </div>
 
@@ -1395,6 +1454,26 @@ export default function Dashboard() {
                 취소
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR 코드 모달 */}
+      {showQRCode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full relative">
+            <button
+              onClick={() => setShowQRCode(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+            >
+              <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <QRCodeGenerator
+              url={`${typeof window !== 'undefined' ? window.location.origin : ''}/checkin`}
+              title="셀프 출석체크"
+            />
           </div>
         </div>
       )}

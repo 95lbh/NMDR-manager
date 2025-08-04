@@ -88,7 +88,7 @@ export default function MemberManagement() {
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
         >
           <PlusIcon className="h-5 w-5" />
-          <span>새 회원 추가</span>
+          <span>회원 추가</span>
         </button>
       </div>
 

@@ -2,18 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  HomeIcon, 
-  UserGroupIcon, 
+import {
+  HomeIcon,
+  UserGroupIcon,
   ClipboardDocumentCheckIcon,
   ChartBarIcon,
-  Cog6ToothIcon 
+  Cog6ToothIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: '대시보드', href: '/', icon: HomeIcon },
   { name: '회원 관리', href: '/members', icon: UserGroupIcon },
   { name: '출석 체크', href: '/attendance', icon: ClipboardDocumentCheckIcon },
+  { name: '셀프 체크인', href: '/checkin', icon: CheckCircleIcon },
   { name: '통계', href: '/stats', icon: ChartBarIcon },
   { name: '설정', href: '/settings', icon: Cog6ToothIcon },
 ];
