@@ -55,7 +55,8 @@ export default function OrientationGuide() {
     setIsRotating(true);
     try {
       // Screen Orientation API를 사용하여 가로모드로 회전
-      await (window.screen.orientation as any).lock('landscape');
+      const orientation = window.screen.orientation as ScreenOrientation & { lock: (orientation: string) => Promise<void> };
+      await orientation.lock('landscape');
       setShowGuide(false);
     } catch (error) {
       console.error('화면 회전 실패:', error);
