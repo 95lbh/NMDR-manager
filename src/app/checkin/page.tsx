@@ -151,8 +151,8 @@ export default function CheckInPage() {
             </svg>
           </div>
           <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">내맘대로 배드민턴</h1>
-          <p className="text-left text-white text-opacity-80 text-l">1. 처음 오신 분은 "+ 회원 추가" 후 출석체크하세요 </p>
-          <p className="text-left text-white text-opacity-80 text-l">2. 이름과 셔틀콕 개수를 선택 후 "출석체크 완료" 클릭!</p>
+          <p className="text-left text-white text-opacity-80 text-l">1. 처음 오신 분은 &quot;+ 회원 추가&quot; 후 출석체크하세요 </p>
+          <p className="text-left text-white text-opacity-80 text-l">2. 이름과 셔틀콕 개수를 선택 후 &quot;출석체크 완료&quot; 클릭!</p>
         </div>
 
         {/* 출석 현황 */}
