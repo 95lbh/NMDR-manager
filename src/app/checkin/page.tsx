@@ -19,6 +19,7 @@ export default function CheckInPage() {
     skillLevel: 'C' as 'S' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
   });
   const [signupErrors, setSignupErrors] = useState<{[key: string]: string}>({});
+  const [showAttendanceList, setShowAttendanceList] = useState(false);
 
   const { members, attendance } = state;
 
@@ -158,10 +159,13 @@ export default function CheckInPage() {
         {/* 출석 현황 */}
         <div className="bg-white bg-opacity-20 rounded-2xl p-4 mb-6 backdrop-blur-sm">
           <div className="flex justify-between items-center text-black">
-            <div className="text-center w-1/3">
+            <button
+              onClick={() => setShowAttendanceList(true)}
+              className="text-center w-1/3 hover:bg-white hover:bg-opacity-20 rounded-xl p-2 transition-all duration-200 cursor-pointer"
+            >
               <div className="text-2xl font-bold">{todayAttendance.length}</div>
               <div className="text-sm opacity-90">출석 완료</div>
-            </div>
+            </button>
             <div className="text-center w-1/3">
               <div className="text-2xl font-bold">{members.length - todayAttendance.length}</div>
               <div className="text-sm opacity-90">미출석</div>
@@ -435,6 +439,94 @@ export default function CheckInPage() {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 오늘 출석자 목록 모달 */}
+      {showAttendanceList && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-emerald-500 to-green-600">
+              <h2 className="text-xl font-semibold text-white">오늘 출석자 목록</h2>
+              <button
+                onClick={() => setShowAttendanceList(false)}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              {todayAttendance.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500 mb-2">아직 출석한 사람이 없습니다.</div>
+                  <div className="text-sm text-gray-400">첫 번째 출석자가 되어보세요! 🎯</div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-4 text-center">
+                    <div className="text-2xl font-bold text-emerald-600">{todayAttendance.length}명</div>
+                    <div className="text-sm text-gray-600">출석 완료</div>
+                  </div>
+
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {todayAttendance
+                      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()) // eslint-disable-line @typescript-eslint/no-explicit-any
+                      .map((attendee: any, index: number) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+                        const member = members.find(m => m.id === attendee.memberId);
+                        const attendanceTime = new Date(attendee.date);
+
+                        return (
+                          <div key={attendee.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="bg-emerald-100 text-emerald-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-gray-900">{attendee.memberName}</div>
+                                <div className="text-xs text-gray-500">
+                                  {member ? `${member.gender === 'male' ? '남' : '여'} · ${member.skillLevel}조` : ''}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-medium text-gray-900">
+                                셔틀콕 {attendee.shuttlecockCount}개
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {attendanceTime.toLocaleTimeString('ko-KR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="text-center text-sm text-gray-600">
+                      총 셔틀콕: <span className="font-semibold text-emerald-600">
+                        {todayAttendance.reduce((sum: number, att: any) => sum + att.shuttlecockCount, 0)}개 {/* eslint-disable-line @typescript-eslint/no-explicit-any */}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t">
+              <button
+                onClick={() => setShowAttendanceList(false)}
+                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}
