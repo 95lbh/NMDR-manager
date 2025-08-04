@@ -50,8 +50,8 @@ export default function MemberForm({ member, isEditing, onSave, onCancel }: Memb
 
     const currentYear = new Date().getFullYear();
     const birthYear = parseInt(formData.birthYear);
-    if (!formData.birthYear || birthYear < 1950 || birthYear > currentYear) {
-      newErrors.birthYear = `올바른 태어난 년도를 입력해주세요. (1950-${currentYear})`;
+    if (!formData.birthYear || birthYear < 1980 || birthYear > currentYear) {
+      newErrors.birthYear = `올바른 태어난 년도를 입력해주세요. (1980-${currentYear})`;
     }
 
     // MMR 검증 제거됨
@@ -131,8 +131,8 @@ export default function MemberForm({ member, isEditing, onSave, onCancel }: Memb
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 errors.birthYear ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="예: 1990"
-              min="1950"
+              placeholder="예: 1995"
+              min="1980"
               max={new Date().getFullYear()}
             />
             {errors.birthYear && <p className="text-red-500 text-sm mt-1">{errors.birthYear}</p>}

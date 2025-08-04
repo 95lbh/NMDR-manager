@@ -21,6 +21,9 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState<SortType>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isCourtExpanded, setIsCourtExpanded] = useState(false);
+  const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false);
+  const [selectedMemberForAttendance, setSelectedMemberForAttendance] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [isShuttlecockModalOpen, setIsShuttlecockModalOpen] = useState(false);
 
   const { members, attendance, courts } = state;
 
@@ -792,6 +795,37 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* 출석체크 버튼 */}
+      <div className="mb-6">
+        <button
+          onClick={() => setIsAttendanceExpanded(true)}
+          className="group w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
+        >
+          {/* 배경 애니메이션 효과 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+          <div className="relative flex items-center space-x-4">
+            <div className="relative">
+              <div className="bg-yellow-300 bg-opacity-30 rounded-full p-3 shadow-lg backdrop-blur-sm group-hover:bg-opacity-40 transition-all duration-300">
+                <svg className="h-8 w-8 text-white drop-shadow-sm group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                <span className="text-xs font-bold text-yellow-900">!</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-start flex-1">
+              <span className="text-3xl font-bold text-white drop-shadow-sm group-hover:text-yellow-100 transition-colors duration-300">빠른 출석체크</span>
+              {/* <span className="text-sm text-white text-opacity-90 font-medium group-hover:text-opacity-100 transition-all duration-300">간편하고 빠르게 체크인하세요</span> */}
+            </div>
+          </div>
+
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
         {/* 코트 현황 - 크기 확대 */}
         <div className="lg:col-span-3 flex flex-col min-h-0">
@@ -1220,6 +1254,149 @@ export default function Dashboard() {
           </div>
           </div>
         </ClientOnly>
+      )}
+
+      {/* 확장형 출석체크 모달 */}
+      {isAttendanceExpanded && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] h-[95vh] flex flex-col">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="bg-green-100 p-2 rounded-full">
+                  <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">빠른 출석체크</h2>
+                  <p className="text-sm text-gray-600">회원 이름을 클릭하여 출석체크를 진행하세요</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAttendanceExpanded(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <ArrowsPointingInIcon className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* 출석 현황 */}
+            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  오늘 출석: <span className="font-semibold text-green-600">{todayAttendance.length}명</span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  미출석: <span className="font-semibold text-orange-600">{members.length - todayAttendance.length}명</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 회원 목록 */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-14 gap-3">
+                {members
+                  .filter(member => !todayAttendance.some(att => att.memberId === member.id))
+                  .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+                  .map((member) => (
+                    <button
+                      key={member.id}
+                      onClick={() => {
+                        setSelectedMemberForAttendance(member);
+                        setIsShuttlecockModalOpen(true);
+                      }}
+                      className="bg-white border-2 border-gray-200 hover:border-green-400 hover:bg-green-50 rounded-lg p-3 transition-all duration-200 hover:scale-105 hover:shadow-lg group aspect-square flex flex-col justify-center"
+                    >
+                      <div className="text-center">
+                        <div className="text-xl font-black text-gray-800 group-hover:text-green-700 leading-tight break-keep">
+                          {member.name}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {member.gender === 'male' ? '남' : '여'} · {member.skillLevel}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+
+              {/* 이미 출석한 회원들 */}
+              {todayAttendance.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">오늘 출석 완료</h3>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-14 gap-3">
+                    {todayAttendance
+                      .sort((a, b) => a.memberName.localeCompare(b.memberName, 'ko'))
+                      .map((attendance) => (
+                        <div
+                          key={attendance.id}
+                          className="bg-green-50 border-2 border-green-200 rounded-lg p-3 opacity-75 aspect-square flex flex-col justify-center"
+                        >
+                          <div className="text-center">
+                            <div className="text-xl font-black text-green-700 leading-tight break-keep">
+                              {attendance.memberName}
+                            </div>
+                            <div className="text-xs text-green-600 mt-1">
+                              셔틀콕 {attendance.shuttlecockCount}개
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 셔틀콕 개수 선택 모달 */}
+      {isShuttlecockModalOpen && selectedMemberForAttendance && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {selectedMemberForAttendance.name} 출석체크
+              </h3>
+              <p className="text-gray-600 mb-6">셔틀콕 개수를 선택해주세요</p>
+
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[0, 1, 2, 3, 4, 5].map((count) => (
+                  <button
+                    key={count}
+                    onClick={async () => {
+                      try {
+                        await actions.addAttendance(
+                          selectedMemberForAttendance.id,
+                          selectedMemberForAttendance.name,
+                          count
+                        );
+                        setIsShuttlecockModalOpen(false);
+                        setSelectedMemberForAttendance(null);
+                      } catch (error) {
+                        console.error('출석체크 실패:', error);
+                        alert('출석체크에 실패했습니다.');
+                      }
+                    }}
+                    className="bg-green-100 hover:bg-green-200 text-green-800 font-bold py-4 px-6 rounded-xl transition-colors text-lg"
+                  >
+                    {count}개
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsShuttlecockModalOpen(false);
+                  setSelectedMemberForAttendance(null);
+                }}
+                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-4 rounded-xl transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
