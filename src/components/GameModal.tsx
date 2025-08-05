@@ -80,6 +80,135 @@ export default function GameModal({ court, courts, onClose, onGameUpdate, attend
     }
   };
 
+  // 실력 등급을 숫자로 변환 (S=7, A=6, B=5, C=4, D=3, E=2, F=1)
+  const getSkillLevelValue = (skillLevel: string): number => {
+    const skillMap: { [key: string]: number } = {
+      'S': 7, 'A': 6, 'B': 5, 'C': 4, 'D': 3, 'E': 2, 'F': 1
+    };
+    return skillMap[skillLevel] || 4; // 기본값 C
+  };
+
+  // 조합의 품질을 평가하는 함수 (낮을수록 좋음)
+  const evaluateCombinationQuality = (players: typeof filteredPlayers): number => {
+    const skills = players.map(p => getSkillLevelValue(p.skillLevel));
+
+    // 1. 실력 차이의 표준편차 (팀 내 균형)
+    const avg = skills.reduce((sum, skill) => sum + skill, 0) / skills.length;
+    const variance = skills.reduce((sum, skill) => sum + Math.pow(skill - avg, 2), 0) / skills.length;
+    const stdDev = Math.sqrt(variance);
+
+    // 2. 최대-최소 실력 차이 (극단적 조합 방지)
+    const maxSkill = Math.max(...skills);
+    const minSkill = Math.min(...skills);
+    const skillRange = maxSkill - minSkill;
+
+    // 3. 실력 차이가 3 이상인 경우 페널티 (예: A등급(6)과 D등급(3) 이상 차이)
+    const extremePenalty = skillRange >= 3 ? skillRange * 2 : 0;
+
+    // 종합 점수: 표준편차 + 실력 범위 + 극단 페널티
+    return stdDev + skillRange * 0.5 + extremePenalty;
+  };
+
+  // 자동 추천 조합 생성 (개선된 알고리즘)
+  const generateRecommendedTeam = () => {
+    if (gameType === 'mixed_doubles') {
+      // 혼합 복식: 남자 2명, 여자 2명
+      const malePlayers = filteredPlayers.filter(p => p.gender === 'male');
+      const femalePlayers = filteredPlayers.filter(p => p.gender === 'female');
+
+      if (malePlayers.length < 2 || femalePlayers.length < 2) {
+        alert('혼합 복식을 위해서는 남자 최소 2명, 여자 최소 2명이 필요합니다.');
+        return;
+      }
+
+      let selectedMales: typeof malePlayers = [];
+      let selectedFemales: typeof femalePlayers = [];
+
+      if (malePlayers.length === 2) {
+        selectedMales = malePlayers;
+      } else {
+        // 모든 가능한 남자 2명 조합 평가
+        const maleCombinations: { combination: typeof malePlayers, quality: number }[] = [];
+
+        for (let i = 0; i < malePlayers.length - 1; i++) {
+          for (let j = i + 1; j < malePlayers.length; j++) {
+            const combination = [malePlayers[i], malePlayers[j]];
+            const quality = evaluateCombinationQuality(combination);
+            maleCombinations.push({ combination, quality });
+          }
+        }
+
+        // 품질 기준으로 정렬하고 상위 조합들 중 랜덤 선택
+        maleCombinations.sort((a, b) => a.quality - b.quality);
+        const bestQuality = maleCombinations[0].quality;
+        const goodCombinations = maleCombinations.filter(c => Math.abs(c.quality - bestQuality) < 0.5);
+
+        const randomMaleCombination = goodCombinations[Math.floor(Math.random() * goodCombinations.length)];
+        selectedMales = randomMaleCombination.combination;
+      }
+
+      if (femalePlayers.length === 2) {
+        selectedFemales = femalePlayers;
+      } else {
+        // 모든 가능한 여자 2명 조합 평가
+        const femaleCombinations: { combination: typeof femalePlayers, quality: number }[] = [];
+
+        for (let i = 0; i < femalePlayers.length - 1; i++) {
+          for (let j = i + 1; j < femalePlayers.length; j++) {
+            const combination = [femalePlayers[i], femalePlayers[j]];
+            const quality = evaluateCombinationQuality(combination);
+            femaleCombinations.push({ combination, quality });
+          }
+        }
+
+        // 품질 기준으로 정렬하고 상위 조합들 중 랜덤 선택
+        femaleCombinations.sort((a, b) => a.quality - b.quality);
+        const bestQuality = femaleCombinations[0].quality;
+        const goodCombinations = femaleCombinations.filter(c => Math.abs(c.quality - bestQuality) < 0.5);
+
+        const randomFemaleCombination = goodCombinations[Math.floor(Math.random() * goodCombinations.length)];
+        selectedFemales = randomFemaleCombination.combination;
+      }
+
+      setSelectedPlayers([...selectedMales.map(p => p.id), ...selectedFemales.map(p => p.id)]);
+    } else {
+      // 남자 복식 또는 여자 복식
+      if (filteredPlayers.length < 4) {
+        alert(`${gameType === 'men_doubles' ? '남자' : '여자'} 복식을 위해서는 최소 4명이 필요합니다.`);
+        return;
+      }
+
+      if (filteredPlayers.length === 4) {
+        setSelectedPlayers(filteredPlayers.map(p => p.id));
+        return;
+      }
+
+      // 모든 가능한 4명 조합 평가
+      const allCombinations: { combination: typeof filteredPlayers, quality: number }[] = [];
+
+      // 모든 4명 조합을 확인하고 품질 평가
+      for (let i = 0; i < filteredPlayers.length - 3; i++) {
+        for (let j = i + 1; j < filteredPlayers.length - 2; j++) {
+          for (let k = j + 1; k < filteredPlayers.length - 1; k++) {
+            for (let l = k + 1; l < filteredPlayers.length; l++) {
+              const combination = [filteredPlayers[i], filteredPlayers[j], filteredPlayers[k], filteredPlayers[l]];
+              const quality = evaluateCombinationQuality(combination);
+              allCombinations.push({ combination, quality });
+            }
+          }
+        }
+      }
+
+      // 품질 기준으로 정렬하고 상위 조합들 중 랜덤 선택
+      allCombinations.sort((a, b) => a.quality - b.quality);
+      const bestQuality = allCombinations[0].quality;
+      const goodCombinations = allCombinations.filter(c => Math.abs(c.quality - bestQuality) < 0.5);
+
+      const randomCombination = goodCombinations[Math.floor(Math.random() * goodCombinations.length)];
+      setSelectedPlayers(randomCombination.combination.map(p => p.id));
+    }
+  };
+
   const handleStartGame = async () => {
     if (selectedPlayers.length !== 4) {
       alert('복식 게임을 위해 정확히 4명의 플레이어를 선택해주세요.');
@@ -455,9 +584,44 @@ export default function GameModal({ court, courts, onClose, onGameUpdate, attend
 
                 {/* 플레이어 선택 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    플레이어 선택 ({selectedPlayers.length}/4)
-                  </label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      플레이어 선택 ({selectedPlayers.length}/4)
+                    </label>
+                    <button
+                      onClick={generateRecommendedTeam}
+                      disabled={filteredPlayers.length < 4 || (gameType === 'mixed_doubles' &&
+                        (filteredPlayers.filter(p => p.gender === 'male').length < 2 ||
+                         filteredPlayers.filter(p => p.gender === 'female').length < 2))}
+                      className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center space-x-1"
+                    >
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>추천 조합</span>
+                    </button>
+                  </div>
+
+                  {/* 추천 조합 안내 */}
+                  {selectedPlayers.length === 4 && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm text-blue-700 font-medium">
+                          {selectedPlayers.length === 4 ? '추천 조합이 선택되었습니다!' : '추천 조합 정보'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-1">
+                        실력 등급을 기반으로 균형 잡힌 팀을 구성했습니다.
+                        {gameType === 'mixed_doubles' ? ' 남녀 각 2명씩 선택되었습니다.' : ' 실력이 비슷한 선수들로 구성되었습니다.'}
+                        <br />
+                        💡 같은 실력의 선수가 많다면 버튼을 다시 눌러 다른 조합을 확인해보세요!
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-4 gap-2 max-h-96 overflow-y-auto">
                     {filteredPlayers.length > 0 ? (
                       filteredPlayers.map((player) => (
