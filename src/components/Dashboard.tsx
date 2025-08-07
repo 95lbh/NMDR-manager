@@ -1721,7 +1721,7 @@ export default function Dashboard() {
                                 )}
                               </div>
 
-                              {courtDisplayMode === 'players' ? (
+                              {(courtDisplayMode as CourtDisplayMode) === 'players' ? (
                                 /* 플레이어 선택 모드 - 전체 코트 영역을 플레이어 카드로 대체 */
                                 <div className="w-full h-full p-6 bg-blue-50 rounded-xl overflow-y-auto">
                                   {/* 게임 타입 필터 버튼 */}
