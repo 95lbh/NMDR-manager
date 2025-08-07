@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { CheckIcon } from '@heroicons/react/24/outline';
+import GuestForm from '@/components/GuestForm';
 
 export default function CheckInPage() {
   const { state, actions } = useApp();
@@ -20,6 +21,7 @@ export default function CheckInPage() {
   });
   const [signupErrors, setSignupErrors] = useState<{[key: string]: string}>({});
   const [showAttendanceList, setShowAttendanceList] = useState(false);
+  const [showGuestForm, setShowGuestForm] = useState(false);
 
   const { members, attendance } = state;
 
@@ -113,6 +115,34 @@ export default function CheckInPage() {
     } catch (error) {
       console.error('회원가입 실패:', error);
       alert('회원가입에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGuestCheckIn = async (guestData: { name: string; shuttlecockCount: number; gender: string; skillLevel: string; birthYear: number }) => {
+    setIsSubmitting(true);
+    try {
+      const guestId = `guest-${Date.now()}`;
+      const guestName = `${guestData.name}`;
+
+      // 게스트 정보를 포함한 출석 데이터 생성
+      await actions.addAttendance(guestId, guestName, guestData.shuttlecockCount, {
+        gender: guestData.gender,
+        skillLevel: guestData.skillLevel,
+        birthYear: guestData.birthYear
+      });
+
+      setShowGuestForm(false);
+      setIsSuccess(true);
+
+      // 3초 후 초기화
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 3000);
+    } catch (error) {
+      console.error('게스트 출석 실패:', error);
+      alert('게스트 출석에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
     }
@@ -229,8 +259,8 @@ export default function CheckInPage() {
               </div>
             )}
 
-            {/* 회원가입 버튼 (항상 표시) */}
-            <div className="mt-4 pt-4 border-t border-gray-200">
+            {/* 회원가입 및 게스트 버튼 */}
+            <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
               <button
                 onClick={() => setShowSignup(true)}
                 className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2"
@@ -239,6 +269,16 @@ export default function CheckInPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 <span>회원 추가</span>
+              </button>
+
+              <button
+                onClick={() => setShowGuestForm(true)}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-1 9.25h-10A2.25 2.25 0 013 18V6a2.25 2.25 0 012.25-2.25h10A2.25 2.25 0 0117.25 6v12a2.25 2.25 0 01-2.25 2.25z" />
+                </svg>
+                <span>게스트 추가</span>
               </button>
             </div>
           </div>
@@ -529,6 +569,14 @@ export default function CheckInPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 게스트 출석 폼 */}
+      {showGuestForm && (
+        <GuestForm
+          onSave={handleGuestCheckIn}
+          onCancel={() => setShowGuestForm(false)}
+        />
       )}
     </div>
   );

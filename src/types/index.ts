@@ -19,6 +19,7 @@ export interface Attendance {
   date: Date;
   shuttlecockCount: number; // 제출한 셔틀콕 개수
   createdAt: Date;
+  hasLeft?: boolean; // 집에 갔는지 여부
   // 게스트 정보 (게스트인 경우에만 존재)
   guestInfo?: {
     gender: 'male' | 'female';

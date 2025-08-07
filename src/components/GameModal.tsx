@@ -23,8 +23,10 @@ export default function GameModal({ court, courts, onClose, onGameUpdate, attend
   const [showWinnerSelection, setShowWinnerSelection] = useState(false);
 
 
-  // 출석한 모든 플레이어 (회원 + 게스트) 생성
-  const availablePlayers = attendees.map(attendee => {
+  // 출석한 모든 플레이어 (회원 + 게스트) 생성 (집에 간 사람 제외)
+  const availablePlayers = attendees
+    .filter(attendee => !attendee.hasLeft) // 집에 간 사람들 제외
+    .map(attendee => {
     // 회원인 경우 회원 정보 사용
     const member = members.find(m => m.id === attendee.memberId);
     if (member) {
@@ -369,16 +371,39 @@ export default function GameModal({ court, courts, onClose, onGameUpdate, attend
       const nextReservedGame = null;
 
       if (court.nextGame) {
-        // 예약 게임을 현재 게임으로 변경
-        nextCurrentGame = {
-          ...court.nextGame,
-          status: 'playing' as const,
-          startTime: new Date(),
-          updatedAt: new Date()
-        };
+        // 예약된 플레이어들이 다른 코트에서 게임 중인지 확인
+        const reservedPlayers = court.nextGame.players;
+        let hasConflictingPlayer = false;
 
-        // Firebase에서 게임 상태 업데이트
-        await gameService.updateGameStatus(court.nextGame.id, 'playing', undefined, undefined);
+        // 다른 코트들을 확인
+        for (const otherCourt of courts) {
+          if (otherCourt.id !== court.id && otherCourt.currentGame) {
+            const conflictingPlayers = otherCourt.currentGame.players.filter(playerId =>
+              reservedPlayers.includes(playerId)
+            );
+            if (conflictingPlayers.length > 0) {
+              hasConflictingPlayer = true;
+              break;
+            }
+          }
+        }
+
+        if (hasConflictingPlayer) {
+          // 충돌하는 플레이어가 있으면 예약 취소
+          await gameService.deleteGame(court.nextGame.id);
+          alert('예약된 게임의 플레이어가 다른 코트에서 게임 중이어서 예약이 자동 취소되었습니다.');
+        } else {
+          // 예약 게임을 현재 게임으로 변경
+          nextCurrentGame = {
+            ...court.nextGame,
+            status: 'playing' as const,
+            startTime: new Date(),
+            updatedAt: new Date()
+          };
+
+          // Firebase에서 게임 상태 업데이트
+          await gameService.updateGameStatus(court.nextGame.id, 'playing', undefined, undefined);
+        }
       }
 
       // 로컬 상태 업데이트
@@ -603,7 +628,7 @@ export default function GameModal({ court, courts, onClose, onGameUpdate, attend
                   </div>
 
                   {/* 추천 조합 안내 */}
-                  {selectedPlayers.length === 4 && (
+                  {/* {selectedPlayers.length === 4 && (
                     <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -620,7 +645,7 @@ export default function GameModal({ court, courts, onClose, onGameUpdate, attend
                         💡 같은 실력의 선수가 많다면 버튼을 다시 눌러 다른 조합을 확인해보세요!
                       </p>
                     </div>
-                  )}
+                  )} */}
 
                   <div className="grid grid-cols-4 gap-2 max-h-96 overflow-y-auto">
                     {filteredPlayers.length > 0 ? (

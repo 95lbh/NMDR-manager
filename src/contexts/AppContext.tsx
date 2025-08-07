@@ -50,6 +50,7 @@ type AppAction =
   | { type: 'ADD_ATTENDANCE'; payload: Attendance }
   | { type: 'UPDATE_ATTENDANCE'; payload: Attendance }
   | { type: 'DELETE_ATTENDANCE'; payload: string }
+  | { type: 'UPDATE_ATTENDANCE_LEFT_STATUS'; payload: { attendanceId: string; hasLeft: boolean } }
   | { type: 'SET_GAMES'; payload: Game[] }
   | { type: 'ADD_GAME'; payload: Game }
   | { type: 'UPDATE_GAME'; payload: Game }
@@ -138,6 +139,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         attendance: state.attendance.filter(a => a.id !== action.payload)
       };
+    case 'UPDATE_ATTENDANCE_LEFT_STATUS':
+      return {
+        ...state,
+        attendance: state.attendance.map(a =>
+          a.id === action.payload.attendanceId
+            ? { ...a, hasLeft: action.payload.hasLeft }
+            : a
+        )
+      };
     case 'SET_GAMES':
       return { ...state, games: action.payload };
     case 'ADD_GAME':
@@ -198,6 +208,7 @@ const AppContext = createContext<{
     addAttendance: (memberId: string, memberName: string, shuttlecockCount: number, guestInfo?: { gender: string; skillLevel: string; birthYear: number }) => Promise<void>;
     updateAttendance: (id: string, updates: Partial<Attendance>) => Promise<void>;
     deleteAttendance: (id: string) => Promise<void>;
+    updateAttendanceLeftStatus: (attendanceId: string, hasLeft: boolean) => Promise<void>;
     loadGames: () => Promise<void>;
     loadCurrentGames: () => Promise<void>;
     completeGame: (game: Game, mmrChanges: any[]) => Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -376,6 +387,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'DELETE_ATTENDANCE', payload: id });
     } catch (error) {
       console.error('출석 삭제 실패:', error);
+      throw error;
+    }
+  };
+
+  const updateAttendanceLeftStatus = async (attendanceId: string, hasLeft: boolean) => {
+    try {
+      await attendanceService.updateLeftStatus(attendanceId, hasLeft);
+      dispatch({
+        type: 'UPDATE_ATTENDANCE_LEFT_STATUS',
+        payload: { attendanceId, hasLeft }
+      });
+    } catch (error) {
+      console.error('집 갔음 상태 업데이트 실패:', error);
       throw error;
     }
   };
@@ -598,6 +622,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addAttendance,
     updateAttendance,
     deleteAttendance,
+    updateAttendanceLeftStatus,
     loadGames,
     loadCurrentGames,
     completeGame,

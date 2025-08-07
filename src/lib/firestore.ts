@@ -167,6 +167,15 @@ export const attendanceService = {
     await deleteDoc(doc(db, COLLECTIONS.ATTENDANCE, attendanceId));
   },
 
+  // 집 갔음 상태 업데이트
+  async updateLeftStatus(id: string, hasLeft: boolean): Promise<void> {
+    const attendanceRef = doc(db, COLLECTIONS.ATTENDANCE, id);
+    await updateDoc(attendanceRef, {
+      hasLeft,
+      updatedAt: Timestamp.now()
+    });
+  },
+
   // 실시간 오늘 출석자 구독 (인덱스 생성 전 임시 버전)
   subscribeToTodayAttendance(callback: (attendance: Attendance[]) => void) {
     const today = new Date();

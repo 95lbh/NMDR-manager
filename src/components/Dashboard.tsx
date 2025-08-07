@@ -22,6 +22,10 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState<SortType>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isCourtExpanded, setIsCourtExpanded] = useState(false);
+  const [courtDisplayMode, setCourtDisplayMode] = useState<'normal' | 'waiting' | 'players'>('normal');
+  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const [gameTypeFilter, setGameTypeFilter] = useState<'men_doubles' | 'women_doubles' | 'mixed_doubles'>('mixed_doubles');
+  const [showCourtSelection, setShowCourtSelection] = useState(false);
   const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false);
   const [selectedMemberForAttendance, setSelectedMemberForAttendance] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [isShuttlecockModalOpen, setIsShuttlecockModalOpen] = useState(false);
@@ -151,6 +155,98 @@ export default function Dashboard() {
     return playingPlayers;
   };
 
+  // 다른 예약에서 플레이어 제거 함수
+  const removePlayersFromOtherReservations = (players: string[], excludeCourtId: string) => {
+    // 다른 코트의 예약에서 충돌하는 플레이어가 있는지 확인하고 제거
+    const courtsToUpdate: string[] = [];
+
+    courts.forEach(court => {
+      // 현재 게임을 시작하는 코트는 제외
+      if (court.id === excludeCourtId) return;
+
+      // 예약된 게임이 있고, 해당 플레이어들이 포함되어 있는지 확인
+      if (court.nextGame && court.nextGame.players) {
+        const hasConflictingPlayer = court.nextGame.players.some(playerId =>
+          players.includes(playerId)
+        );
+
+        if (hasConflictingPlayer) {
+          courtsToUpdate.push(court.id);
+        }
+      }
+    });
+
+    // 충돌하는 예약이 있는 코트들의 예약 취소
+    if (courtsToUpdate.length > 0) {
+      courtsToUpdate.forEach(courtId => {
+        actions.updateCourtGame(courtId, null, null); // 예약 취소
+      });
+
+      // 사용자에게 알림
+      const courtNames = courtsToUpdate.map(courtId => {
+        const court = courts.find(c => c.id === courtId);
+        return court?.name || '알 수 없는 코트';
+      }).join(', ');
+
+      alert(`다음 코트의 예약이 취소되었습니다: ${courtNames}\n(선택된 플레이어가 다른 게임에 참여하게 되어 자동 취소됨)`);
+    }
+  };
+
+  // 코트 선택 처리
+  const handleCourtSelection = async (courtId: string) => {
+    try {
+      const availablePlayers = getAvailablePlayers();
+      const selectedPlayerData = selectedPlayers.map(playerId => {
+        const player = availablePlayers.find(p => p.id === playerId);
+        return player ? {
+          id: player.id,
+          name: player.name,
+          gender: player.gender,
+          skillLevel: player.skillLevel
+        } : null;
+      }).filter(Boolean);
+
+      if (selectedPlayerData.length === 4) {
+        const playerNames = selectedPlayerData.map(p => p!.name);
+        const playerIds = selectedPlayerData.map(p => p!.id);
+
+        // 새 게임 객체 생성
+        const newGame = {
+          id: `game-${Date.now()}`,
+          players: playerIds,
+          playerNames: playerNames,
+          courtId: courtId,
+          type: gameTypeFilter,
+          status: 'playing' as const,
+          startTime: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        // 코트에 게임 추가 (현재 게임이 있으면 예약으로, 없으면 현재 게임으로)
+        const court = courts.find(c => c.id === courtId);
+        if (court?.currentGame && court.currentGame.players && court.currentGame.players.length > 0) {
+          // 예약으로 추가
+          const nextGame = { ...newGame, status: 'waiting' as const };
+          actions.updateCourtGame(courtId, court.currentGame, nextGame);
+        } else {
+          // 현재 게임으로 시작 - 다른 예약에서 플레이어 제거
+          removePlayersFromOtherReservations(playerIds, courtId);
+          actions.updateCourtGame(courtId, newGame);
+        }
+
+        // 상태 초기화
+        setSelectedPlayers([]);
+        setShowCourtSelection(false);
+        setCourtDisplayMode('normal');
+        setActiveDetailView('playing');
+      }
+    } catch (error) {
+      console.error('게임 매칭 실패:', error);
+      alert('게임 매칭에 실패했습니다.');
+    }
+  };
+
   // 대기 중인 게임 플레이어 목록 가져오기
   const getWaitingPlayers = () => {
     const waitingPlayers: Array<{
@@ -172,6 +268,66 @@ export default function Dashboard() {
     });
 
     return waitingPlayers;
+  };
+
+  // 게임 가능한 플레이어들 가져오기
+  const getAvailablePlayers = () => {
+    // 집에 가지 않은 출석자들만 필터링
+    const availableAttendees = todayAttendance.filter(attendee => !attendee.hasLeft);
+
+    // 현재 게임 중이거나 대기 중인 플레이어들 수집
+    const busyPlayerIds = new Set<string>();
+    courts.forEach(court => {
+      if (court.currentGame?.players) {
+        court.currentGame.players.forEach(playerId => busyPlayerIds.add(playerId));
+      }
+      if (court.nextGame?.players) {
+        court.nextGame.players.forEach(playerId => busyPlayerIds.add(playerId));
+      }
+    });
+
+    // 게임 가능한 플레이어들만 필터링
+    const availablePlayers = availableAttendees
+      .filter(attendee => !busyPlayerIds.has(attendee.memberId))
+      .map(attendee => {
+        const member = members.find(m => m.id === attendee.memberId);
+        return {
+          id: attendee.memberId,
+          name: attendee.memberName,
+          gender: member?.gender || attendee.guestInfo?.gender || 'male',
+          skillLevel: member?.skillLevel || attendee.guestInfo?.skillLevel || 'C',
+          isGuest: !!attendee.guestInfo
+        };
+      });
+
+    // 게임 타입에 따른 필터링
+    const filteredPlayers = availablePlayers.filter(player => {
+      if (gameTypeFilter === 'men_doubles') {
+        return player.gender === 'male';
+      } else if (gameTypeFilter === 'women_doubles') {
+        return player.gender === 'female';
+      }
+      return true; // 혼합 복식은 모든 성별 포함
+    });
+
+    // 성별 > 실력 > 이름 순으로 정렬
+    return filteredPlayers.sort((a, b) => {
+      // 1. 성별 정렬 (남성 먼저)
+      if (a.gender !== b.gender) {
+        return a.gender === 'male' ? -1 : 1;
+      }
+
+      // 2. 실력 정렬 (S > A > B > C > D > E > F)
+      const skillOrder = { 'S': 0, 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6 };
+      const skillA = skillOrder[a.skillLevel as keyof typeof skillOrder] ?? 3;
+      const skillB = skillOrder[b.skillLevel as keyof typeof skillOrder] ?? 3;
+      if (skillA !== skillB) {
+        return skillA - skillB;
+      }
+
+      // 3. 이름 정렬
+      return a.name.localeCompare(b.name);
+    });
   };
 
   // 상세 뷰 제목과 내용을 렌더링하는 함수
@@ -260,26 +416,20 @@ export default function Dashboard() {
                       case 'playing':
                         return {
                           bg: 'bg-red-50 border border-red-200',
-                          avatar: 'bg-red-100',
-                          avatarText: 'text-red-600',
                           badge: 'bg-red-100 text-red-700',
-                          label: '게임 진행'
+                          label: '게임중'
                         };
                       case 'waiting':
                         return {
                           bg: 'bg-yellow-50 border border-yellow-200',
-                          avatar: 'bg-yellow-100',
-                          avatarText: 'text-yellow-600',
                           badge: 'bg-yellow-100 text-yellow-700',
-                          label: '게임 대기'
+                          label: '예약중'
                         };
                       case 'available':
                         return {
                           bg: 'bg-green-50 border border-green-200',
-                          avatar: 'bg-green-100',
-                          avatarText: 'text-green-600',
                           badge: 'bg-green-100 text-green-700',
-                          label: '게임 가능'
+                          label: '대기중'
                         };
                     }
                   };
@@ -289,15 +439,23 @@ export default function Dashboard() {
                   return (
                     <div
                       key={attendee.id}
-                      className={`flex items-center justify-between p-3 rounded-lg hover:opacity-80 transition-all slide-up mb-2 ${statusStyle.bg}`}
+                      className={`flex items-center justify-between p-3 rounded-lg hover:opacity-80 transition-all slide-up mb-2 cursor-pointer ${statusStyle.bg} ${attendee.hasLeft ? 'opacity-50 bg-gray-100 border-gray-300' : ''}`}
                       style={{ animationDelay: `${index * 0.1}s` }}
+                      onClick={() => {
+                        if (!attendee.hasLeft) {
+                          const confirmLeave = confirm(`${attendee.memberName}님이 집에 가셨나요?`);
+                          if (confirmLeave) {
+                            actions.updateAttendanceLeftStatus(attendee.id, true);
+                          }
+                        } else {
+                          const confirmReturn = confirm(`${attendee.memberName}님이 다시 돌아오셨나요?`);
+                          if (confirmReturn) {
+                            actions.updateAttendanceLeftStatus(attendee.id, false);
+                          }
+                        }
+                      }}
                     >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${statusStyle.avatar}`}>
-                          <span className={`font-semibold text-sm ${statusStyle.avatarText}`}>
-                            {attendee.memberName.charAt(0)}
-                          </span>
-                        </div>
+                      <div className="flex items-center">
                         <div>
                           <p className="font-medium text-gray-900 mb-2">{attendee.memberName}</p>
                           <div className="flex items-center space-x-2 flex-wrap">
@@ -325,9 +483,15 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyle.badge}`}>
-                          {statusStyle.label}
-                        </span>
+                        {attendee.hasLeft ? (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            집 갔음
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyle.badge}`}>
+                            {statusStyle.label}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -348,12 +512,7 @@ export default function Dashboard() {
               className="flex items-center justify-between p-2 bg-green-50 rounded-lg hover:bg-green-100 transition-colors slide-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 font-semibold text-xs">
-                    {player.name.charAt(0)}
-                  </span>
-                </div>
+              <div className="flex items-center">
                 <div>
                   <p className="font-medium text-gray-900 text-sm">{player.name}</p>
                   <p className="text-sm text-gray-600">{player.courtName}</p>
@@ -381,19 +540,14 @@ export default function Dashboard() {
               className="flex items-center justify-between p-2 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors slide-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <span className="text-yellow-600 font-semibold text-xs">
-                    {player.name.charAt(0)}
-                  </span>
-                </div>
+              <div className="flex items-center">
                 <div>
                   <p className="font-medium text-gray-900 text-sm">{player.name}</p>
                   <p className="text-sm text-gray-600">{player.courtName} 대기</p>
                 </div>
               </div>
               <div className="flex items-center">
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-mono">
                   대기중
                 </span>
               </div>
@@ -508,12 +662,7 @@ export default function Dashboard() {
                     className="flex items-center justify-between p-3 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors slide-up mb-2"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                        <span className="text-teal-600 font-semibold text-sm">
-                          {stats.member.name.charAt(0)}
-                        </span>
-                      </div>
+                    <div className="flex items-center">
                       <div>
                         <p className="font-medium text-gray-900 mb-2">{stats.member.name}</p>
                         <div className="flex items-center space-x-2">
@@ -716,7 +865,11 @@ export default function Dashboard() {
           className={`card hover-lift cursor-pointer transition-all duration-200 ${
             activeDetailView === 'attendance' ? 'ring-2 ring-blue-500 bg-blue-50' : ''
           }`}
-          onClick={() => setActiveDetailView('attendance')}
+          onClick={() => {
+            setActiveDetailView('attendance');
+            setCourtDisplayMode('players');
+            setSelectedPlayers([]);
+          }}
         >
           <div className="flex items-center">
             <div className="p-3 bg-blue-100 rounded-lg">
@@ -733,7 +886,10 @@ export default function Dashboard() {
           className={`card hover-lift cursor-pointer transition-all duration-200 ${
             activeDetailView === 'playing' ? 'ring-2 ring-green-500 bg-green-50' : ''
           }`}
-          onClick={() => setActiveDetailView('playing')}
+          onClick={() => {
+            setActiveDetailView('playing');
+            setCourtDisplayMode('normal');
+          }}
         >
           <div className="flex items-center">
             <div className="p-3 bg-green-100 rounded-lg">
@@ -752,7 +908,10 @@ export default function Dashboard() {
           className={`card hover-lift cursor-pointer transition-all duration-200 ${
             activeDetailView === 'waiting' ? 'ring-2 ring-yellow-500 bg-yellow-50' : ''
           }`}
-          onClick={() => setActiveDetailView('waiting')}
+          onClick={() => {
+            setActiveDetailView('waiting');
+            setCourtDisplayMode('waiting');
+          }}
         >
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 rounded-lg">
@@ -771,7 +930,10 @@ export default function Dashboard() {
           className={`card hover-lift cursor-pointer transition-all duration-200 ${
             activeDetailView === 'todayStats' ? 'ring-2 ring-teal-500 bg-teal-50' : ''
           }`}
-          onClick={() => setActiveDetailView('todayStats')}
+          onClick={() => {
+            setActiveDetailView('todayStats');
+            setCourtDisplayMode('normal');
+          }}
         >
           <div className="flex items-center">
             <div className="p-3 bg-teal-100 rounded-lg">
@@ -782,7 +944,7 @@ export default function Dashboard() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">오늘의 전적</p>
               <p className="text-2xl font-bold text-gray-900">
-                {/* 오늘 진행된 게임 판수 계산 */}Total: 
+                {/* 오늘 진행된 게임 판수 계산 */}Total:
                 {(() => {
                   const todayGames = state.games.filter(game => {
                     const gameDate = new Date(game.createdAt);
@@ -797,90 +959,198 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 출석체크 버튼들 */}
+      {/* 게임판 및 출석체크 버튼들 */}
       <div className="mb-6 flex flex-col lg:flex-row gap-4 landscape-buttons">
-        {/* 관리자용 출석체크 */}
+        {/* 게임판 버튼 */}
         <button
-          onClick={() => setIsAttendanceExpanded(true)}
-          className="group lg:flex-[3] w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
+          onClick={() => setIsCourtExpanded(true)}
+          className="group lg:flex-1 w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
         >
-          {/* 배경 애니메이션 효과 */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
-          <div className="relative flex items-center space-x-4">
-            <div className="relative">
-              <div className="bg-emerald-800 bg-opacity-40 rounded-full p-3 shadow-lg backdrop-blur-sm group-hover:bg-opacity-50 transition-all duration-300">
-                <svg className="h-8 w-8 text-white drop-shadow-sm group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
-                <span className="text-xs font-bold text-yellow-900">!</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-start flex-1">
-              <span className="text-3xl font-bold text-white drop-shadow-sm group-hover:text-yellow-100 transition-colors duration-300">빠른 출석체크</span>
-              {/* <span className="text-sm text-white text-opacity-90 font-medium group-hover:text-opacity-100 transition-all duration-300">간편하고 빠르게 체크인하세요</span> */}
-            </div>
-          </div>
-
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6v12M16 6v12" />
+          </svg>
+          <span className="text-lg">게임판</span>
         </button>
 
-
+        {/* 빠른 출석체크 */}
+        <button
+          onClick={() => setIsAttendanceExpanded(true)}
+          className="group lg:flex-[2] w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-lg">빠른 출석체크</span>
+        </button>
 
         {/* QR 코드 생성 버튼 */}
         <button
           onClick={() => setShowQRCode(true)}
-          className="group lg:flex-1 w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 hover:from-orange-600 hover:via-red-600 hover:to-pink-700 text-white font-bold py-6 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.03] hover:-translate-y-1 flex items-center justify-between relative overflow-hidden"
+          className="group lg:flex-1 w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
         >
-          {/* 배경 애니메이션 효과 */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
-          <div className="relative flex items-center space-x-4">
-            <div className="relative">
-              <div className="bg-red-800 bg-opacity-40 rounded-full p-3 shadow-lg backdrop-blur-sm group-hover:bg-opacity-50 transition-all duration-300">
-                <svg className="h-8 w-8 text-white drop-shadow-sm group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
-                </svg>
-              </div>
-              <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
-                <span className="text-xs font-bold text-yellow-900">QR</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-start flex-1">
-              <span className="text-3xl font-bold text-white drop-shadow-sm group-hover:text-yellow-100 transition-colors duration-300">셀프 출석체크</span>
-              <span className="text-sm text-white text-opacity-90 font-medium group-hover:text-opacity-100 transition-all duration-300">QR 코드 및 링크 생성</span>
-            </div>
-          </div>
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+          </svg>
+          <span className="text-lg">셀프 출석체크</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
-        {/* 코트 현황 - 크기 확대 */}
-        <div className="lg:col-span-3 flex flex-col min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-9 gap-2 flex-1 min-h-0">
+        {/* 코트 현황 */}
+        <div className="lg:col-span-7 flex flex-col min-h-0">
           <div className="card flex-1 flex flex-col min-h-0">
             <div className="card-header flex-shrink-0">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">코트 현황</h2>
-                <button
-                  onClick={() => setIsCourtExpanded(true)}
-                  className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors"
-                  title="코트 현황을 전체 화면으로 보기"
-                >
-                  <ArrowsPointingOutIcon className="h-4 w-4" />
-                  <span>전체 보기</span>
-                </button>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {courtDisplayMode === 'players' ? '플레이어 선택' : '코트 현황'}
+                </h2>
+                <div className="flex items-center space-x-2">
+                  {courtDisplayMode === 'players' && (
+                    <button
+                      onClick={() => {
+                        setCourtDisplayMode('normal');
+                        setSelectedPlayers([]);
+                      }}
+                      className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                    >
+                      코트 보기
+                    </button>
+                  )}
+                </div>
               </div>
               {/* <p className="text-sm text-gray-600 mt-1">코트를 클릭하여 게임을 관리하세요</p> */}
             </div>
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
-              {(() => {
-                const { grid, rows, cols, cardSize } = createDynamicGrid();
+              {courtDisplayMode === 'players' ? (
+                /* 플레이어 선택 모드 - 코트 대신 플레이어 카드들만 표시 */
+                <div className="w-full h-full p-4 bg-blue-50">
+                  {/* 게임 타입 필터 버튼 */}
+                  <div className="flex justify-center gap-2 mb-4">
+                    {[
+                      { key: 'men_doubles', label: '남복' },
+                      { key: 'women_doubles', label: '여복' },
+                      { key: 'mixed_doubles', label: '혼복' }
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setGameTypeFilter(key as typeof gameTypeFilter);
+                          setSelectedPlayers([]);
+                        }}
+                        className={`px-3 py-1 text-sm rounded-lg font-medium transition-colors ${
+                          gameTypeFilter === key
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white text-gray-600 hover:bg-blue-100'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 선택된 플레이어 수 표시 */}
+                  <div className="text-center mb-4">
+                    <span className="text-sm font-medium text-blue-700">
+                      선택된 플레이어: {selectedPlayers.length}/4
+                    </span>
+                  </div>
+
+                  {/* 플레이어 카드들 */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                    {(() => {
+                      const availablePlayers = getAvailablePlayers();
+                      let currentGender = '';
+                      const cards: React.ReactElement[] = [];
+
+                      availablePlayers.forEach((player) => {
+                        // 성별이 바뀔 때 구분선 추가 (그리드에서는 전체 너비로)
+                        if (player.gender !== currentGender) {
+                          if (currentGender !== '') {
+                            cards.push(
+                              <div key={`divider-${player.gender}`} className="col-span-full border-t border-gray-300 my-2"></div>
+                            );
+                          }
+                          currentGender = player.gender;
+                          cards.push(
+                            <div key={`header-${player.gender}`} className="col-span-full text-sm font-semibold text-gray-700 mb-2">
+                              {player.gender === 'male' ? '👨 남성' : '👩 여성'}
+                            </div>
+                          );
+                        }
+
+                        const isSelected = selectedPlayers.includes(player.id);
+                        const canSelect = selectedPlayers.length < 4 || isSelected;
+
+                        cards.push(
+                          <button
+                            key={player.id}
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedPlayers(prev => prev.filter(id => id !== player.id));
+                              } else if (selectedPlayers.length < 4) {
+                                setSelectedPlayers(prev => [...prev, player.id]);
+                              }
+                            }}
+                            disabled={!canSelect}
+                            className={`p-3 rounded-lg border-2 transition-all text-center ${
+                              isSelected
+                                ? 'border-blue-500 bg-blue-100 text-blue-800'
+                                : canSelect
+                                ? 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                                : 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <p className="font-medium text-xs truncate">{player.name}</p>
+                              <div className="flex items-center justify-center space-x-1">
+                                <span className="px-1 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold">
+                                  {player.skillLevel}
+                                </span>
+                                {player.isGuest && (
+                                  <span className="px-1 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
+                                    G
+                                  </span>
+                                )}
+                              </div>
+                              {isSelected && (
+                                <div className="text-blue-500">
+                                  <svg className="h-4 w-4 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      });
+
+                      return cards;
+                    })()}
+                  </div>
+
+                  {/* 게임 매칭 버튼 */}
+                  <div className="mt-6 pt-4 border-t border-gray-300">
+                    <button
+                      onClick={() => selectedPlayers.length === 4 && setShowCourtSelection(true)}
+                      disabled={selectedPlayers.length !== 4}
+                      className={`w-full font-bold py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 ${
+                        selectedPlayers.length === 4
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white cursor-pointer'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>게임 매칭 ({selectedPlayers.length}/4)</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* 일반 코트 현황 모드 */
+                (() => {
+                  const { grid, rows, cols, cardSize } = createDynamicGrid();
 
                 if (courts.length === 0) {
                   return (
@@ -965,8 +1235,49 @@ export default function Dashboard() {
                                 </div>
                               </div>
 
-                              {/* 현재 경기 정보 - 컴팩트 형식 */}
-                              {court.currentGame && court.currentGame.playerNames && court.currentGame.playerNames.length > 0 ? (
+                              {/* 모드별 표시 */}
+                              {courtDisplayMode === 'waiting' ? (
+                                /* 대기자 표시 */
+                                court.nextGame && court.nextGame.playerNames && court.nextGame.playerNames.length > 0 ? (
+                                  <div className="flex-1 space-y-3">
+                                    <div className={`bg-yellow-50 rounded-lg ${cardStyles.padding} border border-yellow-200 shadow-sm`}>
+                                      <div className={`${cardStyles.statusSize} text-yellow-700 ${cardSize === 'small' ? 'mb-1' : 'mb-2'} flex items-center justify-between`}>
+                                        <span className="font-semibold">⏳ 대기 중</span>
+                                        <span className={`${cardStyles.statusSize} bg-yellow-100 px-2 py-1 rounded-full`}>
+                                          {court.nextGame.playerNames.length}명
+                                        </span>
+                                      </div>
+                                      <div className={`grid grid-cols-2 ${cardSize === 'small' ? 'gap-1' : 'gap-2'}`}>
+                                        {court.nextGame.playerNames.map((name, index) => {
+                                          const displayName = cardSize === 'small' && name.length > 6
+                                            ? name.split(' ')[0] || name.substring(0, 4) + '...'
+                                            : name;
+
+                                          return (
+                                            <div
+                                              key={index}
+                                              className={`bg-white text-yellow-800 rounded-lg ${cardSize === 'small' ? 'px-1 py-1.5' : 'px-2 py-2'} text-center ${cardStyles.playerSize} border border-yellow-100 shadow-sm hover:shadow-md transition-shadow`}
+                                              title={name}
+                                            >
+                                              <div className="truncate">{displayName}</div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  /* 대기자가 없을 때 */
+                                  <div className="flex-1 flex items-center justify-center">
+                                    <div className={`text-center ${cardStyles.padding} rounded-lg bg-gray-50 border-2 border-dashed border-gray-300`}>
+                                      <div className={`${cardStyles.fontSize} text-gray-600 font-semibold`}>대기자 없음</div>
+                                      <div className={`${cardStyles.statusSize} text-gray-500 mt-1`}>예약 게임 없음</div>
+                                    </div>
+                                  </div>
+                                )
+                              ) : (
+                                /* 일반 모드: 현재 경기 정보 표시 */
+                                court.currentGame && court.currentGame.playerNames && court.currentGame.playerNames.length > 0 ? (
                                 <div className="flex-1 space-y-3">
                                   {/* 플레이어 미리보기 */}
                                   <div className={`bg-green-50 rounded-lg ${cardStyles.padding} border border-green-200 shadow-sm`}>
@@ -1008,6 +1319,7 @@ export default function Dashboard() {
                                     <div className={`${cardStyles.statusSize} text-gray-500 mt-1`}>클릭하여 게임 시작</div>
                                   </div>
                                 </div>
+                              )
                               )}
                             </div>
                           </button>
@@ -1019,13 +1331,14 @@ export default function Dashboard() {
                   )}
                 </div>
               );
-              })()}
+                })()
+              )}
             </div>
           </div>
         </div>
 
         {/* 동적 상세 뷰 */}
-        <div className="flex flex-col min-h-0">
+        <div className="lg:col-span-2 flex flex-col min-h-0">
           {(() => {
             const detailView = renderDetailView();
             return (
@@ -1081,25 +1394,219 @@ export default function Dashboard() {
         }>
           <div className="fixed inset-0 bg-white z-50 flex flex-col">
             {/* 헤더 */}
-            <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">코트 현황</h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  현재 시간: <span className="font-mono">{currentTime.toLocaleTimeString()}</span>
-                </p>
+            <div className="bg-white border-b border-gray-200">
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    게임판 - {courtDisplayMode === 'players' ? '플레이어 선택' :
+                     courtDisplayMode === 'waiting' ? '대기 중인 게임' :
+                     '진행 중인 게임'}
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    현재 시간: <span className="font-mono">{currentTime.toLocaleTimeString()}</span>
+                  </p>
+                </div>
+                <div className="flex items-center justify-between w-full">
+                  {/* 빈 공간 (왼쪽) */}
+                  <div className="w-24"></div>
+
+                  {/* 코트 현황판 모드 전환 버튼들 (중앙) */}
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => {
+                        setActiveDetailView('attendance');
+                        setCourtDisplayMode('players');
+                        setSelectedPlayers([]);
+                      }}
+                      className={`flex items-center space-x-3 px-5 py-3 rounded-xl text-lg font-semibold transition-colors ${
+                        courtDisplayMode === 'players'
+                          ? 'bg-blue-500 text-white shadow-lg'
+                          : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                      }`}
+                      title="플레이어 선택 모드"
+                    >
+                      <span className="text-xl">👥</span>
+                      <span>플레이어 선택</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveDetailView('playing');
+                        setCourtDisplayMode('normal');
+                      }}
+                      className={`flex items-center space-x-3 px-5 py-3 rounded-xl text-lg font-semibold transition-colors ${
+                        courtDisplayMode === 'normal' && activeDetailView === 'playing'
+                          ? 'bg-green-500 text-white shadow-lg'
+                          : 'bg-green-50 hover:bg-green-100 text-green-700'
+                      }`}
+                      title="게임 중 모드"
+                    >
+                      <span className="text-xl">🏸</span>
+                      <span>게임중</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveDetailView('waiting');
+                        setCourtDisplayMode('waiting');
+                      }}
+                      className={`flex items-center space-x-3 px-5 py-3 rounded-xl text-lg font-semibold transition-colors ${
+                        courtDisplayMode === 'waiting'
+                          ? 'bg-yellow-500 text-white shadow-lg'
+                          : 'bg-yellow-50 hover:bg-yellow-100 text-yellow-700'
+                      }`}
+                      title="대기자 표시 모드"
+                    >
+                      <span className="text-xl">⏳</span>
+                      <span>대기중</span>
+                    </button>
+                  </div>
+
+                  {/* 닫기 버튼 (오른쪽) */}
+                  <button
+                    onClick={() => {
+                      setIsCourtExpanded(false);
+                      setCourtDisplayMode('normal');
+                      setSelectedPlayers([]);
+                    }}
+                    className="flex items-center space-x-3 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-lg font-semibold transition-colors"
+                  >
+                    <ArrowsPointingInIcon className="h-5 w-5" />
+                    <span>닫기</span>
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => setIsCourtExpanded(false)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
-              >
-                <ArrowsPointingInIcon className="h-4 w-4" />
-                <span>닫기</span>
-              </button>
+
             </div>
 
-          {/* 코트 그리드 */}
+          {/* 메인 콘텐츠 - 코트 현황판 */}
           <div className="flex-1 p-6 overflow-auto">
-            {(() => {
+            {courtDisplayMode === 'players' ? (
+              /* 플레이어 선택 모드 - 전체 화면 */
+              <div className="w-full h-full bg-blue-50 rounded-xl p-6">
+                {/* 게임 타입 필터 버튼 */}
+                <div className="flex justify-center gap-3 mb-6">
+                  {[
+                    { key: 'men_doubles', label: '남복' },
+                    { key: 'women_doubles', label: '여복' },
+                    { key: 'mixed_doubles', label: '혼복' }
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setGameTypeFilter(key as typeof gameTypeFilter);
+                        setSelectedPlayers([]);
+                      }}
+                      className={`px-6 py-3 text-lg rounded-xl font-medium transition-colors ${
+                        gameTypeFilter === key
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white text-gray-600 hover:bg-blue-100'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 선택된 플레이어 수 표시 */}
+                <div className="text-center mb-6">
+                  <span className="text-xl font-medium text-blue-700">
+                    선택된 플레이어: {selectedPlayers.length}/4
+                  </span>
+                </div>
+
+                {/* 플레이어 카드들 */}
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                  {(() => {
+                    const availablePlayers = getAvailablePlayers();
+                    let currentGender = '';
+                    const cards: React.ReactElement[] = [];
+
+                    availablePlayers.forEach((player) => {
+                      // 성별이 바뀔 때 구분선 추가 (그리드에서는 전체 너비로)
+                      if (player.gender !== currentGender) {
+                        if (currentGender !== '') {
+                          cards.push(
+                            <div key={`divider-${player.gender}`} className="col-span-full border-t border-gray-300 my-4"></div>
+                          );
+                        }
+                        currentGender = player.gender;
+                        cards.push(
+                          <div key={`header-${player.gender}`} className="col-span-full text-lg font-semibold text-gray-700 mb-4">
+                            {player.gender === 'male' ? '👨 남성' : '👩 여성'}
+                          </div>
+                        );
+                      }
+
+                      const isSelected = selectedPlayers.includes(player.id);
+                      const canSelect = selectedPlayers.length < 4 || isSelected;
+
+                      cards.push(
+                        <button
+                          key={player.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedPlayers(prev => prev.filter(id => id !== player.id));
+                            } else if (selectedPlayers.length < 4) {
+                              setSelectedPlayers(prev => [...prev, player.id]);
+                            }
+                          }}
+                          disabled={!canSelect}
+                          className={`p-4 rounded-xl border-2 transition-all text-center ${
+                            isSelected
+                              ? 'border-blue-500 bg-blue-100 text-blue-800'
+                              : canSelect
+                              ? 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                              : 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
+                          }`}
+                        >
+                          <div className="space-y-2">
+                            <p className="font-medium text-sm truncate">{player.name}</p>
+                            <div className="flex items-center justify-center space-x-1">
+                              <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold">
+                                {player.skillLevel}
+                              </span>
+                              {player.isGuest && (
+                                <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
+                                  게스트
+                                </span>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <div className="text-blue-500">
+                                <svg className="h-5 w-5 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    });
+
+                    return cards;
+                  })()}
+                </div>
+
+                {/* 게임 매칭 버튼 */}
+                <div className="mt-8 pt-6 border-t border-gray-300">
+                  <button
+                    onClick={() => selectedPlayers.length === 4 && setShowCourtSelection(true)}
+                    disabled={selectedPlayers.length !== 4}
+                    className={`w-full font-bold py-4 px-6 rounded-xl transition-all duration-200 flex items-center justify-center space-x-3 text-xl ${
+                      selectedPlayers.length === 4
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white cursor-pointer'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>게임 매칭 ({selectedPlayers.length}/4)</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* 일반 코트 현황 */
+              (() => {
               const { grid, rows, cols } = createDynamicGrid();
 
               if (grid.length === 0) {
@@ -1130,7 +1637,7 @@ export default function Dashboard() {
                       timer: 'text-xl',
                       playerName: 'text-3xl font-black', // 텍스트 크기 최대화: 5xl → 8xl
                       waitingTitle: 'text-2xl',
-                      waitingPlayer: 'text-4xl font-bold', // 3xl → 4xl
+                      waitingPlayer: 'text-3xl font-black', // 게임중과 동일한 크기
                       emptyTitle: 'text-3xl',
                       emptySubtitle: 'text-xl',
                       padding: 'p-8',
@@ -1143,7 +1650,7 @@ export default function Dashboard() {
                       timer: 'text-lg',
                       playerName: 'text-4xl font-black', // 텍스트 크기 최대화: 7xl → 8xl
                       waitingTitle: 'text-xl',
-                      waitingPlayer: 'text-3xl font-bold', // 2xl → 3xl
+                      waitingPlayer: 'text-4xl font-black', // 게임중과 동일한 크기
                       emptyTitle: 'text-2xl',
                       emptySubtitle: 'text-lg',
                       padding: 'p-2',
@@ -1156,7 +1663,7 @@ export default function Dashboard() {
                       timer: 'text-base',
                       playerName: 'text-5xl font-bold', // 텍스트 크기 증가: 3xl → 5xl
                       waitingTitle: 'text-lg',
-                      waitingPlayer: 'text-2xl font-bold', // xl → 2xl
+                      waitingPlayer: 'text-5xl font-bold', // 게임중과 동일한 크기
                       emptyTitle: 'text-xl',
                       emptySubtitle: 'text-base',
                       padding: 'p-4',
@@ -1214,8 +1721,167 @@ export default function Dashboard() {
                                 )}
                               </div>
 
-                              {court.currentGame ? (
-                                /* 현재 게임 플레이어들 */
+                              {courtDisplayMode === 'players' ? (
+                                /* 플레이어 선택 모드 - 전체 코트 영역을 플레이어 카드로 대체 */
+                                <div className="w-full h-full p-6 bg-blue-50 rounded-xl overflow-y-auto">
+                                  {/* 게임 타입 필터 버튼 */}
+                                  <div className="flex justify-center gap-3 mb-6">
+                                    {[
+                                      { key: 'men_doubles', label: '남복' },
+                                      { key: 'women_doubles', label: '여복' },
+                                      { key: 'mixed_doubles', label: '혼복!' }
+                                    ].map(({ key, label }) => (
+                                      <button
+                                        key={key}
+                                        onClick={() => {
+                                          setGameTypeFilter(key as typeof gameTypeFilter);
+                                          setSelectedPlayers([]);
+                                        }}
+                                        className={`px-6 py-3 text-lg rounded-xl font-medium transition-colors ${
+                                          gameTypeFilter === key
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-white text-gray-600 hover:bg-blue-100'
+                                        }`}
+                                      >
+                                        {label}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {/* 선택된 플레이어 수 표시 */}
+                                  <div className="text-center mb-6">
+                                    <span className="text-xl font-medium text-blue-700">
+                                      선택된 플레이어: {selectedPlayers.length}/4
+                                    </span>
+                                  </div>
+
+                                  {/* 플레이어 카드들 */}
+                                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                                    {(() => {
+                                      const availablePlayers = getAvailablePlayers();
+                                      let currentGender = '';
+                                      const cards: React.ReactElement[] = [];
+
+                                      availablePlayers.forEach((player) => {
+                                        // 성별이 바뀔 때 구분선 추가 (그리드에서는 전체 너비로)
+                                        if (player.gender !== currentGender) {
+                                          if (currentGender !== '') {
+                                            cards.push(
+                                              <div key={`divider-${player.gender}`} className="col-span-full border-t border-gray-300 my-4"></div>
+                                            );
+                                          }
+                                          currentGender = player.gender;
+                                          cards.push(
+                                            <div key={`header-${player.gender}`} className="col-span-full text-lg font-semibold text-gray-700 mb-4">
+                                              {player.gender === 'male' ? '👨 남성' : '👩 여성'}
+                                            </div>
+                                          );
+                                        }
+
+                                        const isSelected = selectedPlayers.includes(player.id);
+                                        const canSelect = selectedPlayers.length < 4 || isSelected;
+
+                                        cards.push(
+                                          <button
+                                            key={player.id}
+                                            onClick={() => {
+                                              if (isSelected) {
+                                                setSelectedPlayers(prev => prev.filter(id => id !== player.id));
+                                              } else if (selectedPlayers.length < 4) {
+                                                setSelectedPlayers(prev => [...prev, player.id]);
+                                              }
+                                            }}
+                                            disabled={!canSelect}
+                                            className={`p-4 rounded-xl border-2 transition-all text-center ${
+                                              isSelected
+                                                ? 'border-blue-500 bg-blue-100 text-blue-800'
+                                                : canSelect
+                                                ? 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                                                : 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
+                                            }`}
+                                          >
+                                            <div className="space-y-2">
+                                              <p className="font-medium text-sm truncate">{player.name}</p>
+                                              <div className="flex items-center justify-center space-x-1">
+                                                <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold">
+                                                  {player.skillLevel}
+                                                </span>
+                                                {player.isGuest && (
+                                                  <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs">
+                                                    게스트
+                                                  </span>
+                                                )}
+                                              </div>
+                                              {isSelected && (
+                                                <div className="text-blue-500">
+                                                  <svg className="h-5 w-5 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                  </svg>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </button>
+                                        );
+                                      });
+
+                                      return cards;
+                                    })()}
+                                  </div>
+
+                                  {/* 게임 매칭 버튼 */}
+                                  {selectedPlayers.length === 4 && (
+                                    <div className="mt-8 pt-6 border-t border-gray-300">
+                                      <button
+                                        onClick={() => setShowCourtSelection(true)}
+                                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 flex items-center justify-center space-x-3 text-xl"
+                                      >
+                                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        <span>게임 매칭</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : courtDisplayMode === 'waiting' ? (
+                                /* 대기 모드: 대기자만 표시 */
+                                court.nextGame ? (
+                                  <div className="flex-1 flex items-center justify-center">
+                                    <div className="text-center w-full">
+                                      {/* <div className={`${textSizes.waitingTitle} text-orange-700 mb-4 font-semibold`}>⏳ 대기 중인 게임</div> */}
+                                      <div className={`grid grid-cols-2 ${textSizes.gap}`}>
+                                        {court.nextGame.playerNames.map((name, index) => {
+                                          const cellCount = rows * cols;
+                                          const maxLength = cellCount <= 4 ? 12 : cellCount <= 9 ? 10 : 8;
+                                          const displayName = name.length > maxLength
+                                            ? name.substring(0, maxLength - 2) + '...'
+                                            : name;
+
+                                          return (
+                                            <div
+                                              key={index}
+                                              className={`bg-orange-50 text-orange-800 rounded-xl ${textSizes.playerPadding} text-center ${textSizes.waitingPlayer} border-2 border-orange-200 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105`}
+                                              title={name}
+                                            >
+                                              <div className="truncate px-1">{displayName}</div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex-1 flex items-center justify-center">
+                                    <div className={`text-center ${textSizes.padding} rounded-xl bg-gray-50 border-2 border-dashed border-gray-300`}>
+                                      <div className={`${textSizes.emptyTitle} text-gray-600 font-semibold mb-2`}>대기자 없음</div>
+                                      <div className={`${textSizes.emptySubtitle} text-gray-500`}>예약 게임 없음</div>
+                                    </div>
+                                  </div>
+                                )
+                              ) : (
+                                /* 일반 모드: 현재 게임 우선 표시 */
+                                court.currentGame ? (
+                                  /* 현재 게임 플레이어들 */
                                 <div className="flex-1 flex items-center justify-center">
                                   <div className={`grid grid-cols-2 ${textSizes.gap} w-full`}>
                                     {court.currentGame.playerNames.map((name, index) => {
@@ -1273,6 +1939,7 @@ export default function Dashboard() {
                                     <div className={`${textSizes.emptySubtitle} text-gray-500`}>클릭하여 게임 시작</div>
                                   </div>
                                 </div>
+                              )
                               )}
                             </div>
                           </button>
@@ -1284,7 +1951,8 @@ export default function Dashboard() {
                   )}
                 </div>
               );
-            })()}
+              })()
+            )}
           </div>
           </div>
         </ClientOnly>
@@ -1449,6 +2117,111 @@ export default function Dashboard() {
               url={`${typeof window !== 'undefined' ? window.location.origin : 'https://nmdr.vercel.app'}/checkin`}
               title="셀프 출석체크"
             />
+          </div>
+        </div>
+      )}
+
+      {/* 코트 선택 모달 */}
+      {showCourtSelection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-900">코트 선택</h2>
+              <button
+                onClick={() => setShowCourtSelection(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">선택된 플레이어</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedPlayers.map(playerId => {
+                    const availablePlayers = getAvailablePlayers();
+                    const player = availablePlayers.find(p => p.id === playerId);
+                    return player ? (
+                      <div key={playerId} className="bg-blue-50 p-2 rounded-lg text-center">
+                        <span className="font-medium">{player.name}</span>
+                        <span className="text-sm text-gray-600 ml-2">({player.skillLevel}조)</span>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-lg font-medium text-gray-900">코트 선택</h3>
+                {courts.map(court => {
+                  const isPlaying = court.currentGame && court.currentGame.players && court.currentGame.players.length > 0;
+                  const hasReservation = court.nextGame && court.nextGame.players && court.nextGame.players.length > 0;
+                  const isFull = isPlaying && hasReservation;
+
+                  let status = '';
+                  let statusColor = '';
+                  let buttonClass = '';
+
+                  if (isFull) {
+                    status = '예약 가득참';
+                    statusColor = 'text-red-600';
+                    buttonClass = 'bg-gray-100 text-gray-400 cursor-not-allowed';
+                  } else if (isPlaying) {
+                    status = '진행 중 (예약 가능)';
+                    statusColor = 'text-orange-600';
+                    buttonClass = 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200';
+                  } else {
+                    status = '사용 가능';
+                    statusColor = 'text-green-600';
+                    buttonClass = 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200';
+                  }
+
+                  return (
+                    <button
+                      key={court.id}
+                      onClick={() => {
+                        if (!isFull) {
+                          handleCourtSelection(court.id);
+                        }
+                      }}
+                      disabled={isFull}
+                      className={`w-full p-4 rounded-lg border-2 transition-all text-left ${buttonClass}`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-lg">{court.name}</h4>
+                          <p className={`text-sm ${statusColor}`}>{status}</p>
+                        </div>
+                        <div className="text-right">
+                          {isPlaying && (
+                            <div className="text-xs text-gray-500">
+                              현재: {court.currentGame?.playerNames?.join(', ')}
+                            </div>
+                          )}
+                          {hasReservation && (
+                            <div className="text-xs text-gray-500">
+                              예약: {court.nextGame?.playerNames?.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t">
+              <button
+                onClick={() => setShowCourtSelection(false)}
+                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                취소
+              </button>
+            </div>
           </div>
         </div>
       )}
