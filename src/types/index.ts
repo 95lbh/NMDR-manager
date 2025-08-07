@@ -34,6 +34,9 @@ export type GameType = 'men_doubles' | 'women_doubles' | 'mixed_doubles';
 // 게임 상태
 export type GameStatus = 'waiting' | 'playing' | 'completed';
 
+// 코트 표시 모드
+export type CourtDisplayMode = 'normal' | 'waiting' | 'players';
+
 // 게임 정보 타입
 export interface Game {
   id: string;

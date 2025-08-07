@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { PlayIcon, ClockIcon, UserGroupIcon, ArrowPathIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
-import { Court } from '@/types';
+import { Court, CourtDisplayMode } from '@/types';
 import GameModal from './GameModal';
 import { useApp } from '@/contexts/AppContext';
 import ClientOnly from './ClientOnly';
@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState<SortType>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isCourtExpanded, setIsCourtExpanded] = useState(false);
-  const [courtDisplayMode, setCourtDisplayMode] = useState<'normal' | 'waiting' | 'players'>('normal');
+  const [courtDisplayMode, setCourtDisplayMode] = useState<CourtDisplayMode>('normal');
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [gameTypeFilter, setGameTypeFilter] = useState<'men_doubles' | 'women_doubles' | 'mixed_doubles'>('mixed_doubles');
   const [showCourtSelection, setShowCourtSelection] = useState(false);
@@ -1729,7 +1729,7 @@ export default function Dashboard() {
                                     {[
                                       { key: 'men_doubles', label: '남복' },
                                       { key: 'women_doubles', label: '여복' },
-                                      { key: 'mixed_doubles', label: '혼복!' }
+                                      { key: 'mixed_doubles', label: '혼복' }
                                     ].map(({ key, label }) => (
                                       <button
                                         key={key}
