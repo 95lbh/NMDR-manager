@@ -192,7 +192,7 @@ export default function MemberManagement() {
           </h2>
         </div>
         
-        <div className="overflow-auto rounded-lg border border-gray-200 max-h-[650px]">
+        <div className="overflow-auto rounded-lg border border-gray-200 max-h-[460px]">
           <table className="min-w-full divide-y divide-gray-200 table-fixed">
             <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200 sticky top-0 z-10 shadow-sm">
               <tr>
