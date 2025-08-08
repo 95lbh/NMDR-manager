@@ -43,8 +43,8 @@ export default function MemberManagement() {
 
   // 정렬된 회원 목록
   const sortedMembers = [...members].sort((a, b) => {
-    let aValue: any;
-    let bValue: any;
+    let aValue: string | number;
+    let bValue: string | number;
 
     switch (sortField) {
       case 'name':
