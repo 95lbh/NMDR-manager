@@ -960,39 +960,39 @@ export default function Dashboard() {
       </div>
 
       {/* 게임판 및 출석체크 버튼들 */}
-      <div className="mb-6 flex flex-col lg:flex-row gap-4 landscape-buttons">
-        {/* 게임판 버튼 */}
+      <div className="mb-6 flex flex-col lg:flex-row gap-5 landscape-buttons">
+        {/* 게임판 버튼 - 비율 2 */}
         <button
           onClick={() => setIsCourtExpanded(true)}
-          className="group lg:flex-1 w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
+          className="group lg:flex-[2] w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-6 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6v12M16 6v12" />
           </svg>
-          <span className="text-lg">게임판</span>
+          <span className="text-xl">게임판</span>
         </button>
 
-        {/* 빠른 출석체크 */}
+        {/* 빠른 출석체크 - 비율 2 */}
         <button
           onClick={() => setIsAttendanceExpanded(true)}
-          className="group lg:flex-[2] w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
+          className="group lg:flex-[2] w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold py-6 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className="text-lg">빠른 출석체크</span>
+          <span className="text-xl">빠른 출석체크</span>
         </button>
 
-        {/* QR 코드 생성 버튼 */}
+        {/* QR 코드 생성 버튼 (셀프 출석체크) - 비율 1 */}
         <button
           onClick={() => setShowQRCode(true)}
-          className="group lg:flex-1 w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
+          className="group lg:flex-1 w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold py-6 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center space-x-3"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
           </svg>
-          <span className="text-lg">셀프 출석체크</span>
+          <span className="text-xl">셀프 출석체크</span>
         </button>
       </div>
 
